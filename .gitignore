@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+backend/.env
+backend/staticfiles/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+.idea/
+backend/media/
+*.json.key
+service-account*.json
+*.sqlite3
+.env
+*.zip
