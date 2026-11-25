@@ -86,8 +86,11 @@ class Photo(models.Model):
         return self.caption or self.original_name
 
     def public_url(self):
+        url = self.image.url
+        if url.startswith("http"):
+            return url
         base = settings.LISTINGS["PUBLIC_BASE_URL"].rstrip("/")
-        return f"{base}{self.image.url}" if base else ""
+        return f"{base}/{url.lstrip('/')}" if base else ""
 
 
 class GuestyToken(models.Model):

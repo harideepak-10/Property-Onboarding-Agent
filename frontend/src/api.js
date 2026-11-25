@@ -1,4 +1,5 @@
-const BASE = import.meta.env.VITE_API_URL || '/api'
+// Local dev: '/api' (proxied by Vite). Deployed: the API's full address, e.g. https://…onrender.com/api
+const BASE = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
 export function getToken() {
   try { return localStorage.getItem('token') } catch { return null }

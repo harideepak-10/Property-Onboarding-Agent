@@ -159,6 +159,44 @@ frontend/src/
 - **Licence packet:** the default packet list is a placeholder. The City of Toronto's exact requirements need confirming (`AGENTS["LICENCE_PACKET"]` in settings).
 - **Unit email format:** `{street}{unit}@<domain>`, e.g. que1204@…
 
+## Deploy to Render
+
+`render.yaml` is a Render Blueprint. It creates three things from this repo:
+
+| Resource | Type | What it is |
+|---|---|---|
+| `property-onboarding-db` | PostgreSQL | The database |
+| `property-onboarding-api` | Web service (Python) | Django API, from `backend/`, started by `backend/start.sh` |
+| `property-onboarding-web` | Static site | React app, from `frontend/`, built with Vite |
+
+### Steps
+
+1. Push this repo to GitHub.
+2. In Render: **New → Blueprint**, connect the GitHub repo, then **Apply**.
+3. Render asks for the values marked `sync: false`. For now, enter:
+   - **`CORS_ALLOWED_ORIGINS`** (on the API): `https://property-onboarding-web.onrender.com`
+   - **`VITE_API_URL`** (on the static site): `https://property-onboarding-api.onrender.com/api`
+   - Leave the API keys blank. The agents run in dry-run mode until you add them.
+4. Wait for both services to build. The first deploy takes a few minutes.
+5. If Render gave a service a different address (it adds a suffix when a name is taken), update those two values in each service's **Environment** tab. Then redeploy: **Manual Deploy → Deploy latest commit** for the API, and **Clear build cache & deploy** for the static site, because `VITE_API_URL` is baked in at build time.
+6. Open the static site's URL and sign in as **ops**. The password is the `DEMO_PASSWORD` value in the API's **Environment** tab, which Render generated.
+
+The Django admin is at `https://<api-address>/admin/`, with the same login.
+
+### Free plan limits
+
+These are fine for a client demo:
+- The API sleeps after 15 minutes without traffic. The first request afterwards takes about a minute.
+- **No persistent disk.** Uploaded agreements and photos disappear on every deploy or restart. The demo photos are restored on each start (`SEED_DEMO=true`).
+- The free database expires after 30 days.
+- Cron jobs are paid, so the daily checks don't run on their own. Use **Run daily checks now** on the Licences page.
+
+### For real client data
+- Switch the API to `plan: starter`, add the persistent disk (commented out in `render.yaml`) with `MEDIA_ROOT=/var/data/media`, and use a paid database.
+- Set `SEED_DEMO=false`, and create real users with `python manage.py createsuperuser` in the service's **Shell**.
+- Uncomment the daily-checks cron job.
+- Add the credentials in **Environment**: `ANTHROPIC_API_KEY`, the Google settings, `GUESTY_CLIENT_ID` / `GUESTY_CLIENT_SECRET`, `ANGEL_HOST_EMAIL`, `OPS_EMAIL`. `PUBLIC_BASE_URL` is filled in automatically from Render's address.
+
 ## What's left before production
 - **Client credentials:**
   - Anthropic API key.
@@ -166,5 +204,5 @@ frontend/src/
   - Guesty Open API client ID and secret.
   - Angel Host email.
 - **Client data:** the real master list with product links, building contacts, and the City of Toronto licence packet requirements.
-- **Deployment:** deploy (e.g. Render: web service + PostgreSQL + a daily cron for `run_agent_sweeps`) and set `PUBLIC_BASE_URL`.
+- **Deployment:** move from the free-plan staging setup to paid plans with a disk and the daily cron (see *Deploy to Render*).
 - **Guesty testing:** test the Guesty request bodies against a Guesty test account before switching off dry-run.

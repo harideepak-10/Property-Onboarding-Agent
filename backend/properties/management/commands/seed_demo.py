@@ -64,8 +64,10 @@ class Command(BaseCommand):
         if not MasterItem.objects.exists():
             call_command("import_master_list")
         User = get_user_model()
+        import os
+        password = os.getenv("DEMO_PASSWORD", "onboarding2026")
         if not User.objects.filter(username="ops").exists():
-            User.objects.create_superuser("ops", "ops@example.com", "onboarding2026", first_name="Operations")
+            User.objects.create_superuser("ops", "ops@example.com", password, first_name="Operations")
         for d in DEMO:
             if Property.objects.filter(sequence=d["seq"]).exists():
                 continue
@@ -96,7 +98,7 @@ class Command(BaseCommand):
             ensure_packet(prop)
         self._photos()
         self._guides()
-        self.stdout.write(self.style.SUCCESS(f"Demo ready: {Property.objects.count()} properties. Login: ops / onboarding2026"))
+        self.stdout.write(self.style.SUCCESS(f"Demo ready: {Property.objects.count()} properties. Login: ops / " + ("(DEMO_PASSWORD)" if os.getenv("DEMO_PASSWORD") else "onboarding2026")))
 
     def _photos(self):
         """Illustrated sample photos (not real units) so the gallery and listing preview have content."""
@@ -110,7 +112,10 @@ class Command(BaseCommand):
                 37302: ("set2", "Bright Yonge Street Studio Loft with Balcony", "Church-Yonge Corridor", 165, True)}
         for seq, (prefix, title, area, price, uploaded) in plan.items():
             prop = Property.objects.filter(sequence=seq).first()
-            if not prop or prop.photo_sets.exists():
+            if not prop:
+                continue
+            if prop.photo_sets.exists():
+                self._restore_files(prop, folder, prefix)
                 continue
             files = [(f.name.split("-", 1)[1], f.read_bytes()) for f in sorted(folder.glob(f"{prefix}-*.jpg"))]
             order = ["living-room.jpg", "bedroom.jpg", "kitchen.jpg", "view.jpg", "bathroom.jpg", "dining-area.jpg", "building-exterior.jpg"]
@@ -151,3 +156,15 @@ class Command(BaseCommand):
                 lp.is_listed, lp.listed_at = True, timezone.now()
                 lp.save(update_fields=["is_listed", "listed_at"])
             g.save()
+
+    def _restore_files(self, prop, folder, prefix):
+        """Put sample photo files back if the server's disk was reset (e.g. Render free plan)."""
+        from django.core.files.storage import default_storage
+        from listings.models import Photo
+        # .values() avoids building Photo objects, which would try to open the missing files
+        for name, original in Photo.objects.filter(photo_set__property=prop).values_list("image", "original_name"):
+            if name and not default_storage.exists(name):
+                src = folder / f"{prefix}-{original}"
+                if src.exists():
+                    with open(src, "rb") as fh:
+                        default_storage.save(name, fh)

@@ -55,11 +55,21 @@ def _add(photo_set, name, data):
         raise ValidationError(f"{name}: only JPG, PNG or WebP photos.")
     if len(data) > MAX_BYTES:
         raise ValidationError(f"{name} is over 20 MB.")
+    try:
+        from io import BytesIO
+        from PIL import Image
+        with Image.open(BytesIO(data)) as im:
+            width, height = im.size
+    except Exception:  # noqa: BLE001
+        raise ValidationError(f"{name} isn't a readable image.")
     order = (photo_set.photos.aggregate(m=Max("order"))["m"] or 0) + 1
     room = guess_room(name)
+    # Store the size up front so loading a photo never has to open the file
     photo = Photo(photo_set=photo_set, original_name=name, room=room, caption=room, order=order,
-                  is_cover=not photo_set.photos.filter(is_cover=True).exists())
-    photo.image.save(name, ContentFile(data), save=True)
+                  width=width, height=height, is_cover=not photo_set.photos.filter(is_cover=True).exists())
+    photo.image.save(name, ContentFile(data), save=False)
+    photo.width, photo.height = width, height  # saving the file can reset these; set them last
+    photo.save()
     return photo
 
 

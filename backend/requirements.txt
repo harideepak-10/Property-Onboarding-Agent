@@ -10,3 +10,5 @@ google-api-python-client>=2.150
 google-auth>=2.35
 Pillow>=10.4
 requests>=2.32
+gunicorn>=23.0
+whitenoise>=6.7
