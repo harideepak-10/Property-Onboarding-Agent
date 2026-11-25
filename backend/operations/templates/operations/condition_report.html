@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Condition report · {{ prop.nickname }}</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a;margin:32px auto;max-width:860px;padding:0 24px;font-size:13px;line-height:1.45}
+  h1{font-size:22px;margin:0 0 4px} h2{font-size:15px;margin:24px 0 8px;padding-bottom:4px;border-bottom:2px solid #0f766e;color:#0f766e}
+  .muted{color:#64748b} .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
+  .meta div{background:#f1f5f9;border-radius:8px;padding:8px 10px} .meta b{display:block;font-size:16px}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px} th,td{text-align:left;padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b}
+  .c-good{color:#15803d}.c-fair{color:#b45309}.c-poor,.c-missing{color:#b91c1c;font-weight:600}.c-na{color:#94a3b8}
+  .num{text-align:right;white-space:nowrap} img.ph{width:90px;border-radius:4px}
+  .sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px}.sign div{border-top:1px solid #94a3b8;padding-top:6px}
+  .print{position:fixed;top:16px;right:16px;background:#0f766e;color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+  @media print{.print{display:none} body{margin:0}}
+</style></head>
+<body>
+<button class="print" onclick="window.print()">Print / Save PDF</button>
+<h1>Property condition report</h1>
+<div class="muted">{{ prop.nickname }} · {{ prop.address }}, {{ prop.city }} · Owner: {{ prop.owner_name }}</div>
+<div class="meta">
+  <div><span class="muted">Inspected</span><b>{{ insp.inspected_on|default:"—" }}</b></div>
+  <div><span class="muted">Inspector</span><b>{{ insp.inspector|default:"—" }}</b></div>
+  <div><span class="muted">Issues</span><b>{{ totals.issues }} of {{ totals.items }}</b></div>
+  <div><span class="muted">Est. repair cost</span><b>${{ totals.est_cost|floatformat:2 }}</b></div>
+</div>
+{% if insp.status != "done" %}<p><b>Draft</b> – this inspection hasn't been finalised yet.</p>{% endif %}
+{% if insp.summary %}<h2>Summary</h2><p>{{ insp.summary|linebreaksbr }}</p>{% endif %}
+{% if insp.photos_link %}<p>Photos: <a href="{{ insp.photos_link }}">{{ insp.photos_link }}</a></p>{% endif %}
+
+{% if issues %}<h2>Action items</h2>
+<table><tr><th>Area</th><th>Item</th><th>Condition</th><th>Action</th><th>Notes</th><th class="num">Est. cost</th></tr>
+{% for i in issues %}<tr><td>{{ i.area }}</td><td>{{ i.item }}</td><td class="c-{{ i.condition }}">{{ i.get_condition_display }}</td>
+<td>{{ i.get_action_display|default:"—" }}</td><td>{{ i.notes }}</td><td class="num">{% if i.est_cost %}${{ i.est_cost }}{% endif %}</td></tr>{% endfor %}
+</table>{% endif %}
+
+<h2>Room measurements</h2>
+<table><tr><th>Room</th><th class="num">Length (ft)</th><th class="num">Width (ft)</th><th class="num">Area (sq ft)</th><th class="num">Windows</th><th class="num">Window W × H (in)</th><th>Notes</th></tr>
+{% for r in rooms %}<tr><td>{{ r.room }}</td><td class="num">{{ r.length_ft|default:"—" }}</td><td class="num">{{ r.width_ft|default:"—" }}</td>
+<td class="num">{{ r.area_sqft|default:"—" }}</td><td class="num">{{ r.windows }}</td>
+<td class="num">{% if r.window_width_in %}{{ r.window_width_in }} × {{ r.window_height_in|default:"?" }}{% else %}—{% endif %}</td><td>{{ r.notes }}</td></tr>{% endfor %}
+</table>
+
+<h2>Full checklist</h2>
+{% for area, items in areas.items %}
+<table><tr><th style="width:28%">{{ area }}</th><th style="width:14%">Condition</th><th style="width:14%">Action</th><th>Notes</th><th></th></tr>
+{% for i in items %}<tr><td>{{ i.item }}</td><td class="c-{{ i.condition }}">{{ i.get_condition_display|default:"—" }}</td>
+<td>{{ i.get_action_display|default:"" }}</td><td>{{ i.notes }}</td><td>{% if i.photo %}<img class="ph" src="{{ i.photo.url }}" alt="">{% endif %}</td></tr>{% endfor %}
+</table>{% endfor %}
+
+<div class="sign"><div>Inspector signature</div><div>Owner / representative signature</div></div>
+<p class="muted" style="margin-top:24px">Report #{{ insp.pk }}{% if insp.completed_at %} · finalised {{ insp.completed_at|date:"M j, Y" }}{% endif %}</p>
+</body></html>

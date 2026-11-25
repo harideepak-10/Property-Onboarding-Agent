@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import { Icon } from './ui'
+import { Icon, ROLE_LABEL } from './ui'
 import NewPropertyDialog from './NewPropertyDialog'
 
-const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
+const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', decisions: 'Decisions', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
 const INT_LABEL = { live: 'live', dry_run: 'dry run', heuristic: 'basic reader' }
 
 export default function Layout({ user, onLogout }) {
@@ -44,10 +44,18 @@ export default function Layout({ user, onLogout }) {
           <NavLink to="/" end><Icon name="grid" />Dashboard</NavLink>
           <NavLink to="/properties"><Icon name="home" />Properties<span className="badge">{counts.onboarding}</span></NavLink>
           <NavLink to="/procurement"><Icon name="cart" />Procurement</NavLink>
+          <NavLink to="/purchasing"><Icon name="truck" />Purchasing</NavLink>
+          <NavLink to="/schedule"><Icon name="cal" />Schedule</NavLink>
           <NavLink to="/approvals"><Icon name="mail" />Approvals{counts.drafts > 0 && <span className="badge red">{counts.drafts}</span>}</NavLink>
           <NavLink to="/licences"><Icon name="shield" />Licences</NavLink>
           <NavLink to="/buildings"><Icon name="building" />Buildings</NavLink>
           <NavLink to="/master-list"><Icon name="list" />Master list</NavLink>
+        </nav>
+        <div className="nav-label">Insights</div>
+        <nav className="nav" aria-label="Insights">
+          <NavLink to="/reports"><Icon name="chart" />Reports</NavLink>
+          <NavLink to="/decisions"><Icon name="scale" />Decisions</NavLink>
+          {user?.permissions?.includes('manage_users') && <NavLink to="/users"><Icon name="users" />Users</NavLink>}
         </nav>
         {integ && <div className="side-promo">
           <b>Agents</b>
@@ -60,7 +68,7 @@ export default function Layout({ user, onLogout }) {
         </div>}
         <div className="side-foot">
           <div className="avatar">{initials}</div>
-          <div style={{ flex: 1, minWidth: 0 }}><b>{user?.name}</b><span>Signed in</span></div>
+          <div style={{ flex: 1, minWidth: 0 }}><b>{user?.name}</b><span>{ROLE_LABEL[user?.role] || 'Signed in'}</span></div>
           <button className="icon-btn" type="button" onClick={onLogout} aria-label="Sign out" title="Sign out"><Icon name="logout" small /></button>
         </div>
       </aside>

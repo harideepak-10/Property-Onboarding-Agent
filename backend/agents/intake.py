@@ -84,9 +84,9 @@ def create_from_agreement(doc: AgreementDocument, confirmed_fields: dict, user=N
     return prop, run
 
 
-def run_intake(prop, user=None, google=None) -> AgentRun:
+def run_intake(prop, user=None, google=None, run=None) -> AgentRun:
     google = google or GoogleWorkspace()
-    run = AgentRun.objects.create(agent=AgentRun.Agent.INTAKE, property=prop, started_by=user)
+    run = run or AgentRun.objects.create(agent=AgentRun.Agent.INTAKE, property=prop, started_by=user)
     warnings = 0
     try:
         doc = prop.agreements.first()

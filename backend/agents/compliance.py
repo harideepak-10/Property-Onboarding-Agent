@@ -49,9 +49,9 @@ def tick(prop, step, titles, user=None, note=""):
         return False
 
 
-def run_compliance(prop, user=None, google=None) -> AgentRun:
+def run_compliance(prop, user=None, google=None, run=None) -> AgentRun:
     google = google or GoogleWorkspace()
-    run = AgentRun.objects.create(agent=AgentRun.Agent.COMPLIANCE, property=prop, started_by=user)
+    run = run or AgentRun.objects.create(agent=AgentRun.Agent.COMPLIANCE, property=prop, started_by=user)
     warnings = 0
     try:
         # 1. Unique unit email
@@ -173,6 +173,9 @@ def run_sweeps(user=None) -> AgentRun:
     run.add("Checked licence expiry dates", detail=f"{len(r)} renewal reminder(s) drafted")
     f = building_followups()
     run.add("Checked unanswered building emails", detail=f"{len(f)} follow-up(s) drafted")
+    from operations.services import photo_followups
+    ph = photo_followups()
+    run.add("Checked photo shoots waiting for a Drive link", detail=f"{len(ph)} follow-up(s) drafted")
     run.status, run.finished_at = AgentRun.Status.SUCCEEDED, timezone.now()
     run.save()
     return run

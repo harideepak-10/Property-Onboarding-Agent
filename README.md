@@ -76,6 +76,22 @@ The demo data includes illustrated sample photos (not real units) for two proper
   - Stores that block automated requests, or items without a link, are marked "Check by hand" and priced at the typical price. They don't block the order.
   - Keep `PRICE_CHECKER=simulated` for demos with the sample list, which has no product links.
 
+**Phase 5** covers the operations around the 12 steps, plus decisions on the client's open questions:
+- **Unit tab** (step 2): bedrooms with bed sizes, sofa beds and sleeping capacity; keys, fobs, parking and locker; utilities and internet with provider, account and monthly cost. Saving ticks "Keys and fobs registered", "Parking registered", "Utilities set up" and "Internet set up" when the details are complete.
+- **Smarter quantities:** a new *per guest* rule (glasses), size-specific bedding (twin rooms get twin sheets), and sofa beds counted for bedding but not mattresses. Warns when the master list has no item for a bed size in the unit (e.g. king sheets).
+- **Purchasing tracker:**
+  - After approval, each store cart is marked ordered (store order number, expected date), then each line delivered, missing or damaged. Paid price, quantity received and receipts can be recorded.
+  - Late deliveries are flagged. When everything has arrived, "All deliveries received" (step 7) and "Delivery confirmed" (step 5) are ticked.
+  - Missing or damaged items roll into a **top-up order**. Order history per property; optional budget per order.
+  - **Purchasing page** across all properties, with filters, totals by property and store, and CSV export.
+- **Inspection tab** (step 4): standard checklist for every room (condition, action, estimated cost, photo) plus room measurements (feet; windows in inches). Finishing it generates a printable **condition report** and ticks step 4.
+- **Schedule:** inspections, setup days (with a setup checklist that ticks step 7), photo shoots (the Drive link ticks step 8), deliveries and repairs. Booking with an email drafts a confirmation for approval; the daily check chases photographers 3 days after the shoot.
+- **Costs tab and Reports page:** cost per property (purchases, decor, expenses, licence fee), monthly utilities, average cost, time per step and agreement-to-live days.
+- **Roles:** admin, manager, coordinator, viewer (Users page). Managers approve orders, send emails and go live; coordinators do the work; viewers read.
+- **Daily digest:** `run_agent_sweeps --digest` emails a summary (blocked, late deliveries, visits this week, expiring licences) and posts to Slack if `SLACK_WEBHOOK_URL` is set.
+- **Background agents:** set `AGENTS_ASYNC=true` to run agents in a background thread; the page polls the run.
+- **Decisions page:** every open question we answered with a default, why, and where to change it (`backend/config/decisions.py`).
+
 ### Dry-run mode
 Without credentials, nothing leaves the system. The agents record what they *would* have done, and the app marks those steps "Dry run".
 - **No `ANTHROPIC_API_KEY`:** agreements are read with a basic PDF text reader. Every field is highlighted for checking.
@@ -118,7 +134,7 @@ Open http://localhost:5173. The dev server forwards `/api` to Django on port 800
 ### Daily checks
 Schedule this once a day (Windows Task Scheduler, cron, or a Render cron job):
 ```
-python manage.py run_agent_sweeps
+python manage.py run_agent_sweeps --digest
 ```
 You can also run it from the Licences page with **Run daily checks now**.
 
@@ -143,17 +159,19 @@ backend/
   procurement/   Stores, master list, importer, pricing (simulated), order services and API
   agents/        Intake + Compliance agents, email drafts, buildings, Claude/Google integrations
   listings/      Photos, listing profile, Guesty client, Listing agent, readiness, guest guide, go-live
+  operations/    Visits, inspections and condition reports, expenses, cost and timeline reports, digest
+  config/decisions.py   Defaults chosen for the client's open questions (shown on the Decisions page)
   tests/         Engine, procurement and API tests
 frontend/src/
-  pages/         Dashboard, Properties, PropertyDetail (+ property/ tabs), Procurement, MasterList, Approvals, Licences, Buildings, Login
+  pages/         Dashboard, Properties, PropertyDetail (+ property/ tabs), Procurement, Purchasing, Schedule, Reports,
+                 Decisions, Users, MasterList, Approvals, Licences, Buildings, Login
   components/    Layout, NewPropertyDialog, ui (icons, pills, toast)
 ```
 
 ## Assumptions to confirm with the client
 - **Nickname format:** A + sequence, city code, first 3 letters of the street + unit number.
-- **Glasses:** wine and drinking glasses are counted 2 per bed (may need to be per guest instead).
-- **Sofa beds:** not counted as beds.
-- **Typical price:** a fixed reference price, not the last price paid.
+- See the **Decisions** page (or `backend/config/decisions.py`) for every default we chose: glasses per guest, sleeps 2 per bed, sofa beds get bedding but no mattress, required utilities, roles and more.
+- **Typical price:** a fixed reference price, updated whenever the master list is re-imported.
 - **Over-price threshold:** 25%. Change it with `OVER_PRICE_THRESHOLD`.
 
 - **Licence packet:** the default packet list is a placeholder. The City of Toronto's exact requirements need confirming (`AGENTS["LICENCE_PACKET"]` in settings).
@@ -200,7 +218,7 @@ These are fine for a client demo:
 
 ### For real client data
 - Switch the API to `plan: starter`, add the persistent disk (commented out in `render.yaml`) with `MEDIA_ROOT=/var/data/media`, and use a paid database plan (Neon or Render).
-- Set `SEED_DEMO=false`, and create real users with `python manage.py createsuperuser` in the service's **Shell**.
+- Set `SEED_DEMO=false`. The `ops` admin is created from `DEMO_PASSWORD`; add everyone else on the **Users** page.
 - Uncomment the daily-checks cron job.
 - Add the credentials in **Environment**: `ANTHROPIC_API_KEY`, the Google settings, `GUESTY_CLIENT_ID` / `GUESTY_CLIENT_SECRET`, `ANGEL_HOST_EMAIL`, `OPS_EMAIL`. `PUBLIC_BASE_URL` is filled in automatically from Render's address.
 

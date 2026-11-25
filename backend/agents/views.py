@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -60,19 +61,45 @@ class AgentRunViewSet(viewsets.ReadOnlyModelViewSet):
         return qs.filter(property_id=prop) if prop else qs[:50]
 
 
+def _agent_fn(agent):
+    if agent == "intake":
+        return intake.run_intake, AgentRun.Agent.INTAKE
+    if agent == "compliance":
+        return compliance.run_compliance, AgentRun.Agent.COMPLIANCE
+    if agent == "listing":
+        from listings.services import run_listing
+        return run_listing, AgentRun.Agent.LISTING
+    return None, None
+
+
+def _in_background(fn, prop, user, run):
+    """Run an agent in a thread so the request returns at once; the page polls /agent-runs/{id}/."""
+    import threading
+
+    from django.db import close_old_connections
+
+    def work():
+        close_old_connections()
+        try:
+            fn(prop, user=user, run=run)
+        except Exception as e:  # noqa: BLE001 - the run functions record their own errors
+            AgentRun.objects.filter(pk=run.pk).update(status=AgentRun.Status.FAILED, error=str(e), finished_at=timezone.now())
+        finally:
+            close_old_connections()
+    threading.Thread(target=work, daemon=True).start()
+
+
 @api_view(["POST"])
 def run_agent(request, pk, agent):
     prop = get_object_or_404(Property, pk=pk)
-    if agent == "intake":
-        run = intake.run_intake(prop, user=request.user)
-    elif agent == "compliance":
-        run = compliance.run_compliance(prop, user=request.user)
-    elif agent == "listing":
-        from listings.services import run_listing
-        run = run_listing(prop, user=request.user)
-    else:
+    fn, kind = _agent_fn(agent)
+    if not fn:
         return Response({"detail": "Unknown agent."}, status=404)
-    return Response(AgentRunSerializer(run).data, status=201)
+    if settings.AGENTS_ASYNC:
+        run = AgentRun.objects.create(agent=kind, property=prop, started_by=request.user)
+        _in_background(fn, prop, request.user, run)
+        return Response(AgentRunSerializer(run).data, status=202)
+    return Response(AgentRunSerializer(fn(prop, user=request.user)).data, status=201)
 
 
 @api_view(["POST"])

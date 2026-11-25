@@ -27,7 +27,7 @@ class MasterItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MasterItem
         fields = ["id", "category", "category_label", "name", "item_type", "store_code", "typical_price", "rule",
-                  "rule_label", "multiplier", "product_url", "store_sku", "is_active", "notes", "alternatives"]
+                  "rule_label", "multiplier", "bed_size", "include_sofa_beds", "product_url", "store_sku", "is_active", "notes", "alternatives"]
 
     def validate_item_type(self, v):
         return v.strip().lower()
@@ -43,16 +43,27 @@ class OrderLineSerializer(serializers.ModelSerializer):
     link = serializers.CharField(read_only=True)
     rule = serializers.SerializerMethodField()
     alternative = serializers.SerializerMethodField()
+    purchase_status_label = serializers.CharField(source="get_purchase_status_display", read_only=True)
+    actual_total = serializers.DecimalField(max_digits=11, decimal_places=2, read_only=True)
+    is_late = serializers.BooleanField(read_only=True)
+    receipt_url = serializers.SerializerMethodField()
+
+    def get_receipt_url(self, obj):
+        return obj.receipt.url if obj.receipt else ""
 
     class Meta:
         model = OrderLine
         fields = ["id", "source", "category", "name", "item_type", "store_code", "store_name", "link", "quantity",
                   "typical_price", "current_price", "unit_price", "line_total", "in_stock", "flag", "check_note", "resolution",
-                  "replaced_from", "needs_decision", "included", "rule", "alternative"]
+                  "replaced_from", "needs_decision", "included", "rule", "alternative",
+                  "purchase_status", "purchase_status_label", "store_order_number", "actual_unit_price", "actual_total",
+                  "quantity_received", "ordered_at", "expected_delivery", "delivered_at", "receipt_url", "purchase_notes", "is_late",
+                  "carried_over"]
 
     def get_rule(self, obj):
         it = obj.master_item
-        return {"rule": it.rule, "label": it.get_rule_display(), "multiplier": it.multiplier} if it else None
+        return {"rule": it.rule, "label": it.get_rule_display(), "multiplier": it.multiplier, "bed_size": it.bed_size,
+                "include_sofa_beds": it.include_sofa_beds} if it else None
 
     def get_alternative(self, obj):
         if not obj.needs_decision or not obj.master_item:
@@ -73,17 +84,25 @@ class OrderSerializer(serializers.ModelSerializer):
     lines = OrderLineSerializer(many=True, read_only=True)
     decor = DecorSerializer(many=True, read_only=True)
     summary = serializers.SerializerMethodField()
+    tracking = serializers.SerializerMethodField()
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
     cross_check = serializers.SerializerMethodField()
     carts = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ["id", "property", "property_nickname", "status", "status_label", "bedrooms", "bathrooms", "beds",
-                  "checked_at", "approved_at", "created_at", "summary", "cross_check", "carts", "lines", "decor"]
+        fields = ["id", "property", "property_nickname", "kind", "kind_label", "status", "status_label", "bedrooms", "bathrooms", "beds",
+                  "layout", "budget", "checked_at", "approved_at", "created_at", "summary", "tracking", "cross_check", "carts", "lines", "decor"]
         read_only_fields = ["status", "checked_at", "approved_at", "created_at"]
 
     def get_summary(self, obj):
         return {k: (str(v) if not isinstance(v, int) else v) for k, v in services.summary(obj).items()}
+
+    def get_tracking(self, obj):
+        if obj.status != Order.Status.APPROVED:
+            return None
+        t = services.tracking_summary(obj)
+        return {**t, "planned": str(t["planned"]), "spent": str(t["spent"])}
 
     def get_cross_check(self, obj):
         return services.cross_check(obj) if obj.status != Order.Status.DRAFT else None

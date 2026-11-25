@@ -194,9 +194,9 @@ Operations team
         warning="" if to else "Add ANGEL_HOST_EMAIL in settings, or type their address here.", created_by_agent=AGENT)
 
 
-def run_listing(prop, user=None, guesty=None) -> AgentRun:
+def run_listing(prop, user=None, guesty=None, run=None) -> AgentRun:
     guesty = guesty or Guesty()
-    run = AgentRun.objects.create(agent=AgentRun.Agent.LISTING, property=prop, started_by=user)
+    run = run or AgentRun.objects.create(agent=AgentRun.Agent.LISTING, property=prop, started_by=user)
     warnings = 0
     try:
         prof = profile(prop)

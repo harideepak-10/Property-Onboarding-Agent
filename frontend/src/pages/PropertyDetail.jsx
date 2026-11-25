@@ -7,6 +7,11 @@ import ListingTab from './property/ListingTab'
 import PhotosTab from './property/PhotosTab'
 import GuestTab from './property/GuestTab'
 import GoLiveTab from './property/GoLiveTab'
+import UnitTab from './property/UnitTab'
+import InspectionTab from './property/InspectionTab'
+import ScheduleTab from './property/ScheduleTab'
+import PurchasesTab from './property/PurchasesTab'
+import CostsTab from './property/CostsTab'
 import { ErrorBox, Icon, Loading, Pill, Ring, STATE, STEP_STATUS, useToast } from '../components/ui'
 
 const LICENCE_STATUSES = [['not_started', 'Not started'], ['submitted', 'Submitted'], ['returned', 'Returned by city'], ['approved', 'Approved'], ['expired', 'Expired']]
@@ -56,14 +61,16 @@ export default function PropertyDetail() {
       <section className="card stat-strip">
         <div className="ss"><Ring pct={p.progress} size={64} stroke={7} /><div><b>Onboarding</b><span>{stepsDone} of 12 steps done</span></div></div>
         <div className="ss"><div className="kpi-ic ic-acc"><Icon name="sparkle" small /></div><div><b>{listing.readiness.pct}% listing-ready</b><span>{listing.readiness.checks.filter(c => !c.ok).length} checks left</span></div></div>
-        <div className="ss"><div className="kpi-ic ic-info"><Icon name="bed" small /></div><div><b>{p.bedrooms} bd · {p.bathrooms} ba · {p.beds} bed{p.beds > 1 ? 's' : ''}</b><span>Unit size</span></div></div>
+        <div className="ss"><div className="kpi-ic ic-info"><Icon name="bed" small /></div><div><b>{p.bedrooms} bd · {p.bathrooms} ba · {p.beds} bed{p.beds > 1 ? 's' : ''}</b><span>{p.sleeps ? `Sleeps ${p.sleeps}` : 'Unit size'}{p.sofa_beds ? ` · ${p.sofa_beds} sofa bed` : ''}</span></div></div>
         <div className="ss"><div className={`kpi-ic ${p.licence?.status === 'approved' ? 'ic-ok' : p.licence?.status === 'returned' ? 'ic-bad' : 'ic-warn'}`}><Icon name="shield" small /></div><div><b>Licence: {p.licence?.status_label}</b><span>{p.licence?.expires_on ? `Expires ${p.licence.expires_on}` : 'City of Toronto'}</span></div></div>
         <div className="ss"><div className="kpi-ic ic-acc"><Icon name="user" small /></div><div><b>{p.owner_name}</b><span>{p.owner_type === 'agent' ? 'Agent' : 'Owner'}{p.lease_end ? ` · lease to ${p.lease_end}` : ''}</span></div></div>
       </section>
 
       <div className="ptabs" role="tablist">
-        {[['onboarding', 'list', 'Onboarding', `${p.progress}%`], ['listing', 'file', 'Listing', `${listing.readiness.pct}% ready`], ['photos', 'folder', 'Photos', photos.length], ['guest', 'users', 'Guest experience', p.steps[10]?.status === 'done' ? 'Done' : `${p.steps[10]?.tasks.filter(t => t.done).length || 0}/3`], ['golive', 'sparkle', 'Go live', p.steps[11]?.status === 'done' ? 'Live' : `${p.steps[11]?.tasks.filter(t => t.done).length || 0}/4`]].map(([k, i, l, c]) =>
-          <button key={k} className="ptab" role="tab" type="button" aria-selected={tab === k} onClick={() => setTab(k)}><Icon name={i} small />{l}<span className="cnt">{c}</span></button>)}
+        {[['onboarding', 'list', 'Onboarding', `${p.progress}%`], ['unit', 'key', 'Unit', `${p.steps[1]?.tasks.filter(t => t.done).length || 0}/${p.steps[1]?.tasks.length || 7}`],
+          ['inspection', 'checkc', 'Inspection', p.steps[3]?.status === 'done' ? 'Done' : `${p.steps[3]?.tasks.filter(t => t.done).length || 0}/4`],
+          ['schedule', 'cal', 'Schedule', ''], ['purchases', 'truck', 'Purchases', ''], ['costs', 'dollar', 'Costs', ''], ['listing', 'file', 'Listing', `${listing.readiness.pct}% ready`], ['photos', 'folder', 'Photos', photos.length], ['guest', 'users', 'Guest experience', p.steps[10]?.status === 'done' ? 'Done' : `${p.steps[10]?.tasks.filter(t => t.done).length || 0}/3`], ['golive', 'sparkle', 'Go live', p.steps[11]?.status === 'done' ? 'Live' : `${p.steps[11]?.tasks.filter(t => t.done).length || 0}/4`]].map(([k, i, l, c]) =>
+          <button key={k} className="ptab" role="tab" type="button" aria-selected={tab === k} onClick={() => setTab(k)}><Icon name={i} small />{l}{c !== '' && <span className="cnt">{c}</span>}</button>)}
       </div>
       {tab === 'listing' && <>
         {listingRun && <section className="card"><div className="card-b"><AgentRun run={listingRun} animate /></div></section>}
@@ -72,6 +79,11 @@ export default function PropertyDetail() {
       {tab === 'photos' && <PhotosTab p={p} listing={listing} setListing={setListing} onOpen={setLight} />}
       {tab === 'guest' && <GuestTab p={p} onSaved={load} />}
       {tab === 'golive' && <GoLiveTab p={p} onChanged={load} />}
+      {tab === 'unit' && <UnitTab p={p} onSaved={load} />}
+      {tab === 'inspection' && <InspectionTab p={p} onSaved={load} />}
+      {tab === 'schedule' && <ScheduleTab p={p} onSaved={load} />}
+      {tab === 'purchases' && <PurchasesTab p={p} onSaved={load} />}
+      {tab === 'costs' && <CostsTab p={p} />}
       {tab === 'onboarding' && <>
       <div className="cols">
         <section className="card">

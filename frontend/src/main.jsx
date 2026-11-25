@@ -4,7 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './styles.css'
 import { api, getToken, setToken } from './api'
 import Layout from './components/Layout'
-import { Loading, ToastProvider } from './components/ui'
+import { Loading, ToastProvider, UserCtx } from './components/ui'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Properties from './pages/Properties'
@@ -14,6 +14,11 @@ import MasterList from './pages/MasterList'
 import Approvals from './pages/Approvals'
 import Licences from './pages/Licences'
 import Buildings from './pages/Buildings'
+import Purchasing from './pages/Purchasing'
+import Schedule from './pages/Schedule'
+import Reports from './pages/Reports'
+import Decisions from './pages/Decisions'
+import Users from './pages/Users'
 
 function App() {
   const [user, setUser] = useState(undefined)
@@ -31,6 +36,7 @@ function App() {
   const logout = () => { setToken(null); setUser(null) }
 
   return (
+    <UserCtx.Provider value={user}>
     <Routes>
       <Route element={<Layout user={user} onLogout={logout} />}>
         <Route index element={<Dashboard />} />
@@ -42,9 +48,15 @@ function App() {
         <Route path="approvals" element={<Approvals />} />
         <Route path="licences" element={<Licences />} />
         <Route path="buildings" element={<Buildings />} />
+        <Route path="purchasing" element={<Purchasing />} />
+        <Route path="schedule" element={<Schedule />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="decisions" element={<Decisions />} />
+        <Route path="users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
+    </UserCtx.Provider>
   )
 }
 

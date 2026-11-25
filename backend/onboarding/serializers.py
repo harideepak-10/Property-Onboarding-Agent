@@ -121,7 +121,12 @@ class PropertyDetailSerializer(PropertyListSerializer):
     class Meta(PropertyListSerializer.Meta):
         fields = PropertyListSerializer.Meta.fields + [
             "owner_email", "owner_phone", "postal_code", "drive_folder_url", "unit_email",
-            "guesty_listing_id", "steps", "activity", "latest_order"]
+            "guesty_listing_id", "steps", "activity", "latest_order", "sofa_beds", "sleeps"]
+
+    sleeps = serializers.SerializerMethodField()
+
+    def get_sleeps(self, obj):
+        return obj.layout()["sleeps"]
 
     def get_steps(self, obj):
         qs = obj.steps.select_related("template").prefetch_related("tasks__template", "template__depends_on")

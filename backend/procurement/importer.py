@@ -2,6 +2,7 @@
 
 Columns: category, name, item_type, store, typical_price, rule, multiplier,
 product_url, store_sku, alt_name, alt_store, alt_price, alt_url
+Optional: bed_size (king/queen/double/twin, per-bed items only), include_sofa_beds (yes/no)
 Rows are matched on (name, store) so re-importing updates prices and links.
 """
 import csv
@@ -16,7 +17,9 @@ RULE_ALIASES = {
     "per bedroom": "per_bedroom", "per_bedroom": "per_bedroom",
     "per bathroom": "per_bathroom", "per_bathroom": "per_bathroom",
     "per bed": "per_bed", "per_bed": "per_bed",
+    "per guest": "per_guest", "per_guest": "per_guest", "per sleeps": "per_guest",
 }
+BED_SIZES = {"", "king", "queen", "double", "twin"}
 
 
 class ImportErrorRow(Exception):
@@ -52,6 +55,9 @@ def import_csv(fileobj, deactivate_missing=False):
             if category not in MasterItem.Category.values:
                 raise ImportErrorRow(f"unknown category '{category}'")
             store = _store(row.get("store"))
+            bed_size = (row.get("bed_size") or "").strip().lower()
+            if bed_size not in BED_SIZES:
+                raise ImportErrorRow(f"unknown bed size '{bed_size}'")
             item, was_created = MasterItem.objects.update_or_create(
                 name=row["name"].strip(), store=store,
                 defaults={
@@ -62,6 +68,8 @@ def import_csv(fileobj, deactivate_missing=False):
                     "multiplier": int(row.get("multiplier") or 1),
                     "product_url": (row.get("product_url") or "").strip(),
                     "store_sku": (row.get("store_sku") or "").strip(),
+                    "bed_size": bed_size,
+                    "include_sofa_beds": (row.get("include_sofa_beds") or "").strip().lower() in ("yes", "y", "true", "1"),
                     "is_active": True,
                 },
             )

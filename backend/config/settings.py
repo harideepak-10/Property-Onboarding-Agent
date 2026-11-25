@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "procurement",
     "agents",
     "listings",
+    "operations",
 ]
 
 MIDDLEWARE = [
@@ -117,7 +118,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
-    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated", "properties.permissions.RolePermission"],
     "DEFAULT_PAGINATION_CLASS": None,
 }
 
@@ -197,3 +198,21 @@ LISTINGS = {
     "CURRENCY": "CAD",
     "TIMEZONE": "America/Toronto",
 }
+
+# --- Unit layout and operations defaults (see config/decisions.py for why) ---
+UNIT = {
+    "SLEEPS_PER_BED": {"king": 2, "queen": 2, "double": 2, "twin": 1},
+    "SLEEPS_PER_SOFA_BED": 2,
+    "SOFA_BED_SIZE": "double",          # sofa beds get double-size bedding
+    "DEFAULT_BED_SIZE": "queen",
+    "REQUIRED_UTILITIES": env_list("REQUIRED_UTILITIES", "electricity,internet"),
+    "MEASUREMENT_UNIT": "ft",            # room sizes in feet; window widths in inches
+}
+OPERATIONS = {
+    "PHOTO_FOLLOWUP_DAYS": int(os.getenv("PHOTO_FOLLOWUP_DAYS", "3")),
+    "ANGEL_HOST_FOLLOWUP_DAYS": int(os.getenv("ANGEL_HOST_FOLLOWUP_DAYS", "5")),
+    "SLACK_WEBHOOK_URL": os.getenv("SLACK_WEBHOOK_URL", ""),
+    "DIGEST_TO": os.getenv("DIGEST_TO", ""),   # defaults to OPS_EMAIL
+}
+# Run agents in a background thread (the page polls for progress). Off in tests.
+AGENTS_ASYNC = env_bool("AGENTS_ASYNC", False)

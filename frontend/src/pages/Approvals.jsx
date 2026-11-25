@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { ErrorBox, Icon, Loading, useToast } from '../components/ui'
+import { ErrorBox, Icon, Loading, useCan, useToast } from '../components/ui'
 
 export default function Approvals() {
+  const canSend = useCan('send_emails')
   const [params, setParams] = useSearchParams()
   const tab = params.get('tab') || 'draft'
   const [list, setList] = useState(null)
@@ -57,7 +58,7 @@ export default function Approvals() {
               <div className="field"><label htmlFor="m-body">Message</label><textarea id="m-body" value={sel.body} disabled={sel.status !== 'draft'} onChange={e => setSel({ ...sel, body: e.target.value })} /></div>
               {sel.attachment && <span className="chip" style={{ justifySelf: 'start' }}><Icon name="file" small />{sel.attachment}</span>}
               {sel.status === 'draft' && <div className="row">
-                <button className="btn primary" type="button" disabled={busy || !sel.to.trim()} onClick={() => act(async () => { await save(); await api.sendEmail(sel.id) }, 'Email approved and sent.')}><Icon name="send" small />Approve and send</button>
+                <button className="btn primary" type="button" disabled={busy || !sel.to.trim() || !canSend} title={canSend ? '' : 'A manager or admin sends emails'} onClick={() => act(async () => { await save(); await api.sendEmail(sel.id) }, 'Email approved and sent.')}><Icon name="send" small />Approve and send</button>
                 <button className="btn" type="button" disabled={busy} onClick={() => act(save, 'Draft saved.')}>Save changes</button>
                 <span className="spacer" />
                 <button className="btn ghost" type="button" disabled={busy} onClick={() => act(() => api.discardEmail(sel.id), 'Draft discarded.')}>Discard</button>

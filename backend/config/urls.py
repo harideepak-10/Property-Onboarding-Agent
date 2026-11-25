@@ -7,6 +7,7 @@ from onboarding import views as ob
 from procurement import views as pr
 from agents import views as ag
 from listings import views as li
+from operations import views as op
 
 router = DefaultRouter()
 router.register("properties", ob.PropertyViewSet, basename="property")
@@ -18,10 +19,26 @@ router.register("agent-runs", ag.AgentRunViewSet, basename="agent-run")
 router.register("emails", ag.EmailDraftViewSet, basename="email")
 router.register("buildings", ag.BuildingViewSet, basename="building")
 router.register("compliance-items", ag.ComplianceItemViewSet, basename="compliance-item")
+router.register("visits", op.VisitViewSet, basename="visit")
+router.register("inspections", op.InspectionViewSet, basename="inspection")
+router.register("expenses", op.ExpenseViewSet, basename="expense")
 
 api = [
     path("auth/login/", ob.login),
     path("auth/me/", ob.me),
+    path("auth/users/", op.users),
+    path("auth/users/<int:pk>/", op.user_detail),
+    path("properties/<int:pk>/unit/", op.unit_details),
+    path("properties/<int:pk>/costs/", op.property_costs),
+    path("inspections/<int:pk>/complete/", op.complete_inspection),
+    path("inspections/<int:pk>/report/", op.inspection_report),
+    path("inspections/<int:pk>/items/<int:item_id>/photo/", op.inspection_item_photo),
+    path("order-lines/<int:pk>/track/", op.track_line),
+    path("orders/<int:pk>/mark-store/", op.mark_store),
+    path("purchasing/", op.purchasing),
+    path("reports/", op.reports),
+    path("decisions/", op.decisions),
+    path("digest/", op.digest),
     path("dashboard/", ob.dashboard),
     path("tasks/<int:pk>/set/", ob.set_task),
     path("steps/<int:pk>/block/", ob.block_step),

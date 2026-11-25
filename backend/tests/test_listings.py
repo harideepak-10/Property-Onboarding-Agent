@@ -168,7 +168,7 @@ class GuestyClientTests(TestCase):
 @override_settings(LISTINGS=LISTINGS, MEDIA_ROOT="/tmp/test-media")
 class ListingApiTests(TestCase):
     def setUp(self):
-        get_user_model().objects.create_user("ops", password="pw-12345678")
+        get_user_model().objects.create_superuser("ops", "ops@example.com", "pw-12345678")
         self.c = APIClient()
         self.c.login(username="ops", password="pw-12345678")
         self.p = ready_property()

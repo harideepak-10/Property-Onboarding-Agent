@@ -45,12 +45,17 @@ def login(request):
     if not user:
         return Response({"detail": "Wrong username or password."}, status=400)
     token, _ = Token.objects.get_or_create(user=user)
-    return Response({"token": token.key, "user": {"username": user.username, "name": actor_name(user)}})
+    return Response({"token": token.key, "user": _me(user)})
+
+
+def _me(user):
+    from properties.permissions import permissions_for, role_of
+    return {"username": user.username, "name": actor_name(user), "role": role_of(user), "permissions": permissions_for(user)}
 
 
 @api_view(["GET"])
 def me(request):
-    return Response({"username": request.user.username, "name": actor_name(request.user)})
+    return Response(_me(request.user))
 
 
 # ---------- properties ----------

@@ -102,6 +102,8 @@ class EmailDraft(models.Model):
         OWNER_DOCUMENTS = "owner_documents", "Documents needed from owner"
         LICENCE_RENEWAL = "licence_renewal", "Licence renewal reminder"
         ANGEL_HOST = "angel_host", "Ready to optimize (Angel Host)"
+        VENDOR_BOOKING = "vendor_booking", "Booking confirmation (vendor)"
+        VENDOR_FOLLOWUP = "vendor_followup", "Follow-up (vendor)"
         OTHER = "other", "Other"
 
     class Status(models.TextChoices):

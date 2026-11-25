@@ -3,8 +3,8 @@ import { api, money } from '../api'
 import { ErrorBox, Icon, Loading, useToast } from '../components/ui'
 
 const CATS = [['furniture', 'Furniture'], ['kitchen', 'Kitchen'], ['bath', 'Bath'], ['bedroom', 'Bedroom'], ['living', 'Living'], ['electronics', 'Electronics and fixtures'], ['cleaning', 'Cleaning']]
-const RULES = [['fixed', 'Fixed'], ['per_bedroom', 'Per bedroom'], ['per_bathroom', 'Per bathroom'], ['per_bed', 'Per bed']]
-const BLANK = { category: 'kitchen', name: '', item_type: '', store_code: 'amazon', typical_price: '', rule: 'fixed', multiplier: 1, product_url: '', store_sku: '', is_active: true }
+const RULES = [['fixed', 'Fixed'], ['per_bedroom', 'Per bedroom'], ['per_bathroom', 'Per bathroom'], ['per_bed', 'Per bed'], ['per_guest', 'Per guest (sleeps)']]
+const BLANK = { category: 'kitchen', name: '', item_type: '', store_code: 'amazon', typical_price: '', rule: 'fixed', multiplier: 1, bed_size: '', include_sofa_beds: false, product_url: '', store_sku: '', is_active: true }
 
 export default function MasterList() {
   const [items, setItems] = useState(null)
@@ -19,7 +19,8 @@ export default function MasterList() {
   const load = () => api.masterItems().then(setItems).catch(setErr)
   useEffect(() => { load(); api.stores().then(setStores) }, [])
 
-  const qty = (it) => ({ fixed: 1, per_bedroom: preview.bedrooms, per_bathroom: preview.bathrooms, per_bed: preview.beds }[it.rule]) * it.multiplier
+  // preview assumes queen beds and no sofa beds
+  const qty = (it) => ({ fixed: 1, per_bedroom: preview.bedrooms, per_bathroom: preview.bathrooms, per_bed: !it.bed_size || it.bed_size === 'queen' ? preview.beds : 0, per_guest: preview.beds * 2 }[it.rule] ?? 0) * it.multiplier
   const shown = useMemo(() => (items || []).filter(i => !filter || (i.name + ' ' + i.item_type).toLowerCase().includes(filter.toLowerCase())), [items, filter])
   const est = (items || []).filter(i => i.is_active).reduce((a, i) => a + qty(i) * Number(i.typical_price), 0)
 
@@ -57,7 +58,7 @@ export default function MasterList() {
               return [head,
                 <tr key={it.id} className={it.is_active ? '' : 'zero'}>
                   <td><b className="sm">{it.name}</b><div className="muted sm">type: {it.item_type}{it.store_sku ? ` · SKU ${it.store_sku}` : ''}</div></td>
-                  <td className="sm">{it.rule_label.replace(' (one per unit)', '')}{it.multiplier > 1 ? ` × ${it.multiplier}` : ''}</td>
+                  <td className="sm">{it.rule_label.replace(' (one per unit)', '')}{it.multiplier > 1 ? ` × ${it.multiplier}` : ''}{it.bed_size ? <div className="muted sm">{it.bed_size} beds{it.include_sofa_beds ? ' + sofa beds' : ''}</div> : it.include_sofa_beds ? <div className="muted sm">+ sofa beds</div> : null}</td>
                   <td className="sm">{stores.find(s => s.code === it.store_code)?.name || it.store_code}</td>
                   <td className="r num sm">{money(it.typical_price)}</td>
                   <td className="r num"><b>{it.is_active ? qty(it) : '—'}</b></td>
@@ -79,7 +80,7 @@ export default function MasterList() {
           </section>
           <section className="card">
             <div className="card-h"><h2>CSV columns</h2></div>
-            <div className="card-b sm muted" style={{ lineHeight: 1.7 }}>category, name, item_type, store, typical_price, rule, multiplier, product_url, store_sku, alt_name, alt_store, alt_price, alt_url
+            <div className="card-b sm muted" style={{ lineHeight: 1.7 }}>category, name, item_type, store, typical_price, rule, multiplier, bed_size, include_sofa_beds, product_url, store_sku, alt_name, alt_store, alt_price, alt_url
               <div style={{ marginTop: 8 }}>Rules: fixed, per bedroom, per bathroom, per bed. Rows match on name + store, so re-importing updates prices. If any row has an error, nothing is imported.</div></div>
           </section>
         </div>
@@ -106,6 +107,11 @@ function EditDialog({ item, setItem, stores, onSave, onClose }) {
           <div className="field"><label htmlFor="e-price">Typical price</label><input id="e-price" type="number" step="0.01" min="0" value={item.typical_price} onChange={set('typical_price')} required /></div>
           <div className="field"><label htmlFor="e-rule">Quantity rule</label><select id="e-rule" value={item.rule} onChange={set('rule')}>{RULES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
           <div className="field"><label htmlFor="e-mult">Multiplier</label><input id="e-mult" type="number" min="1" value={item.multiplier} onChange={set('multiplier')} /></div>
+          {item.rule === 'per_bed' && <>
+            <div className="field"><label htmlFor="e-bs">Bed size</label><select id="e-bs" value={item.bed_size || ''} onChange={set('bed_size')}>
+              {[['', 'Any size'], ['king', 'King'], ['queen', 'Queen'], ['double', 'Double'], ['twin', 'Twin']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
+            <label className="row sm" style={{ gap: 8, alignSelf: 'end' }}><input type="checkbox" checked={!!item.include_sofa_beds} onChange={e => setItem({ ...item, include_sofa_beds: e.target.checked })} />Also count sofa beds (bedding, not mattresses)</label>
+          </>}
           <div className="field" style={{ gridColumn: '1/-1' }}><label htmlFor="e-url">Product link</label><input id="e-url" type="url" value={item.product_url} onChange={set('product_url')} placeholder="https://" /></div>
           <div className="field"><label htmlFor="e-sku">Store SKU / ASIN</label><input id="e-sku" value={item.store_sku} onChange={set('store_sku')} /></div>
         </div></div>

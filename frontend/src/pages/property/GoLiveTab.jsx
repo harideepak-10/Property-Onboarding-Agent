@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api'
 import AgentRun from '../../components/AgentRun'
-import { ErrorBox, Icon, Loading, useToast } from '../../components/ui'
+import { ErrorBox, Icon, Loading, useCan, useToast } from '../../components/ui'
 
 const CH_KEY = { Airbnb: 'airbnb', 'Booking.com': 'booking', 'Direct-booking site': 'direct' }
 
@@ -11,6 +11,7 @@ export default function GoLiveTab({ p, onChanged }) {
   const [run, setRun] = useState(null)
   const [confirm, setConfirm] = useState(false)
   const [unlisting, setUnlisting] = useState(false)
+  const canApprove = useCan('approve_go_live')
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -60,13 +61,13 @@ export default function GoLiveTab({ p, onChanged }) {
               <span className="muted sm">Approving lists the property on its connected channels in Guesty (Airbnb, Booking.com and the direct site).</span>
               {!confirm ? <button className="btn primary" type="button" disabled={!d.ready || busy} onClick={() => setConfirm(true)} style={{ justifyContent: 'center' }}><Icon name="sparkle" small />Approve go-live</button>
                 : <div className="note warn" style={{ margin: 0 }}><Icon name="alert" small /><div>List <b className="mono">{p.nickname}</b> on all connected channels now?
-                  <div className="row" style={{ gap: 8, marginTop: 10 }}><button className="btn small primary" type="button" disabled={busy} onClick={() => act(() => api.approveGoLive(p.id), 'Approved. The property is listed.')}>Yes, go live</button>
+                  <div className="row" style={{ gap: 8, marginTop: 10 }}><button className="btn small primary" type="button" disabled={busy || !canApprove} title={canApprove ? '' : 'A manager or admin approves go-live'} onClick={() => act(() => api.approveGoLive(p.id), 'Approved. The property is listed.')}>Yes, go live</button>
                     <button className="btn small ghost" type="button" onClick={() => setConfirm(false)}>Cancel</button></div></div></div>}
               {!d.ready && <span className="muted sm" style={{ textAlign: 'center' }}>Fix the items marked with a warning first.</span>}
             </> : <>
               <div className="sum-row" style={{ padding: 0 }}><span className="muted">Listed</span><span className="sm">{new Date(d.listed_at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</span></div>
               <div className="sum-row" style={{ padding: 0 }}><span className="muted">Guesty ID</span><span className="mono sm">{d.guesty_listing_id}</span></div>
-              {!unlisting ? <button className="btn ghost small" type="button" onClick={() => setUnlisting(true)} style={{ justifySelf: 'start' }}>Unlist property…</button>
+              {!unlisting ? <button className="btn ghost small" type="button" disabled={!canApprove} onClick={() => setUnlisting(true)} style={{ justifySelf: 'start' }}>Unlist property…</button>
                 : <form style={{ display: 'grid', gap: 8 }} onSubmit={e => { e.preventDefault(); act(() => api.unlist(p.id, reason), 'Property unlisted.'); setUnlisting(false) }}>
                   <input className="input" placeholder="Reason (e.g. licence renewal, repairs)" value={reason} onChange={e => setReason(e.target.value)} required aria-label="Reason for unlisting" />
                   <div className="row" style={{ gap: 8 }}><button className="btn small" type="submit" disabled={busy}>Unlist</button><button className="btn small ghost" type="button" onClick={() => setUnlisting(false)}>Cancel</button></div>

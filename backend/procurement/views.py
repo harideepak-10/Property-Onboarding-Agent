@@ -56,7 +56,11 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         def num(k):
             v = request.data.get(k)
             return None if v in (None, "") else max(0, int(v))
-        order = services.create_order(prop, num("bedrooms"), num("bathrooms"), num("beds"), user=request.user)
+        kind = request.data.get("kind") or Order.Kind.FULL
+        if kind not in Order.Kind.values:
+            return Response({"detail": "Unknown order type."}, status=400)
+        budget = request.data.get("budget") or None
+        order = services.create_order(prop, num("bedrooms"), num("bathrooms"), num("beds"), user=request.user, kind=kind, budget=budget)
         return self._out(order, 201)
 
     @action(detail=True, methods=["post"])

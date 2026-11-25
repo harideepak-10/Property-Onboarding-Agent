@@ -32,6 +32,12 @@ const PATHS = {
   building: '<rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2M10 21v-3h4v3"/>',
   sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z"/>',
   send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
+  ruler: '<path d="M3 17L17 3l4 4L7 21z"/><path d="M7 13l2 2M10 10l2 2M13 7l2 2"/>',
+  truck: '<path d="M2 6h12v10H2zM14 10h4l3 3v3h-7"/><circle cx="6" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+  dollar: '<path d="M12 2v20M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+  scale: '<path d="M12 3v18M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0zM8 21h8"/>',
   ext: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
 }
 
@@ -64,6 +70,14 @@ export function Pill({ map, value, nodot }) {
   const [cls, label] = map[value] || ['p-info', value]
   return <span className={`pill ${cls}${nodot ? ' nodot' : ''}`}>{label}</span>
 }
+
+export const UserCtx = createContext(null)
+/** Mirrors the server's role rules so buttons can explain why they're disabled. The server still enforces them. */
+export function useCan(perm) {
+  const u = useContext(UserCtx)
+  return !u?.permissions || u.permissions.includes(perm)
+}
+export const ROLE_LABEL = { admin: 'Admin', manager: 'Manager', coordinator: 'Coordinator', viewer: 'Viewer' }
 
 const ToastCtx = createContext(() => {})
 export function ToastProvider({ children }) {

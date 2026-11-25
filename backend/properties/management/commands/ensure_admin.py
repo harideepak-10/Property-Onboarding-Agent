@@ -27,4 +27,6 @@ class Command(BaseCommand):
         user.is_staff = user.is_superuser = user.is_active = True
         user.set_password(password)
         user.save()
+        from properties.models import UserProfile
+        UserProfile.objects.update_or_create(user=user, defaults={"role": "admin"})
         self.stdout.write(self.style.SUCCESS(f"Admin '{username}' {'created' if created else 'password updated'}."))

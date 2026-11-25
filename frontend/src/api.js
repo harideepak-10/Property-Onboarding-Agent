@@ -96,7 +96,53 @@ export const api = {
   approveGoLive: (id) => request('POST', `/properties/${id}/go-live/approve/`),
   confirmChannel: (id, ch) => request('POST', `/properties/${id}/go-live/channels/${ch}/`),
   unlist: (id, reason) => request('POST', `/properties/${id}/go-live/unlist/`, { reason }),
+  // unit details (step 2)
+  unit: (id) => request('GET', `/properties/${id}/unit/`),
+  saveUnit: (id, data) => request('PUT', `/properties/${id}/unit/`, data),
+  // purchasing tracker
+  trackLine: (id, data) => request('PATCH', `/order-lines/${id}/track/`, data),
+  uploadReceipt: (id, file) => { const f = new FormData(); f.append('receipt', file); return request('PATCH', `/order-lines/${id}/track/`, f) },
+  markStore: (orderId, data) => request('POST', `/orders/${orderId}/mark-store/`, data),
+  purchasing: (params = {}) => request('GET', '/purchasing/?' + new URLSearchParams(params)),
+  purchasingCsv: async (params = {}) => (await request('GET', '/purchasing/?' + new URLSearchParams({ ...params, export: 'csv' }), undefined, { raw: true })).text(),
+  // visits, inspections, expenses
+  visits: (params = {}) => request('GET', '/visits/?' + new URLSearchParams(params)),
+  bookVisit: (data) => request('POST', '/visits/', data),
+  updateVisit: (id, data) => request('PATCH', `/visits/${id}/`, data),
+  inspections: (propertyId) => request('GET', `/inspections/?property=${propertyId}`),
+  startInspection: (data) => request('POST', '/inspections/', data),
+  saveInspection: (id, data) => request('PATCH', `/inspections/${id}/`, data),
+  completeInspection: (id) => request('POST', `/inspections/${id}/complete/`),
+  inspectionPhoto: (id, itemId, file) => { const f = new FormData(); f.append('photo', file); return request('POST', `/inspections/${id}/items/${itemId}/photo/`, f) },
+  inspectionReport: async (id) => (await request('GET', `/inspections/${id}/report/`, undefined, { raw: true })).text(),
+  expenses: (propertyId) => request('GET', `/expenses/?property=${propertyId}`),
+  addExpense: (data) => request('POST', '/expenses/', data),
+  deleteExpense: (id) => request('DELETE', `/expenses/${id}/`),
+  costs: (id) => request('GET', `/properties/${id}/costs/`),
+  // reports, decisions, users, digest
+  reports: () => request('GET', '/reports/'),
+  decisions: () => request('GET', '/decisions/'),
+  digest: () => request('GET', '/digest/'),
+  sendDigest: () => request('POST', '/digest/'),
+  users: () => request('GET', '/auth/users/'),
+  addUser: (data) => request('POST', '/auth/users/', data),
+  updateUser: (id, data) => request('PATCH', `/auth/users/${id}/`, data),
   orderDocument: async (id) => (await request('GET', `/orders/${id}/document/`, undefined, { raw: true })).text(),
 }
 
 export const money = (n) => '$' + Number(n || 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+export const fmtDate = (d) => d ? new Date(d + (String(d).length === 10 ? 'T12:00:00' : '')).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+
+export function downloadText(text, name, type = 'text/csv') {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type }))
+  a.download = name
+  a.click(); URL.revokeObjectURL(a.href)
+}
+
+export function openHtml(html) {
+  const w = window.open('', '_blank')
+  if (w) { w.document.open(); w.document.write(html); w.document.close() }
+  return !!w
+}

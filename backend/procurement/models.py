@@ -34,6 +34,7 @@ class MasterItem(models.Model):
         PER_BEDROOM = "per_bedroom", "Per bedroom"
         PER_BATHROOM = "per_bathroom", "Per bathroom"
         PER_BED = "per_bed", "Per bed"
+        PER_GUEST = "per_guest", "Per guest (sleeps)"
 
     class Category(models.TextChoices):
         FURNITURE = "furniture", "Furniture"
@@ -53,6 +54,8 @@ class MasterItem(models.Model):
     typical_price = models.DecimalField(max_digits=9, decimal_places=2)
     rule = models.CharField(max_length=20, choices=Rule.choices, default=Rule.FIXED)
     multiplier = models.PositiveSmallIntegerField(default=1)
+    bed_size = models.CharField(max_length=10, blank=True, help_text="Per-bed items only: count just beds of this size (blank = any size)")
+    include_sofa_beds = models.BooleanField(default=False, help_text="Per-bed items: also count sofa beds (bedding yes, mattresses no)")
     product_url = models.URLField(blank=True, max_length=600)
     store_sku = models.CharField(max_length=60, blank=True, help_text="Amazon ASIN, Walmart item ID, etc.")
     is_active = models.BooleanField(default=True)
@@ -64,14 +67,32 @@ class MasterItem(models.Model):
     def __str__(self):
         return self.name
 
-    def quantity_for(self, bedrooms: int, bathrooms: int, beds: int) -> int:
-        base = {
-            self.Rule.FIXED: 1,
-            self.Rule.PER_BEDROOM: bedrooms,
-            self.Rule.PER_BATHROOM: bathrooms,
-            self.Rule.PER_BED: beds,
-        }[self.rule]
+    def quantity_for(self, bedrooms, bathrooms=None, beds=None) -> int:
+        """Pass a layout dict (see Property.layout) or the three plain counts."""
+        lay = bedrooms if isinstance(bedrooms, dict) else simple_layout(bedrooms, bathrooms, beds)
+        if self.rule == self.Rule.PER_BED:
+            sofa_size = settings.UNIT["SOFA_BED_SIZE"]
+            if self.bed_size:
+                base = lay["beds_by_size"].get(self.bed_size, 0)
+                if self.include_sofa_beds and self.bed_size == sofa_size:
+                    base += lay.get("sofa_beds", 0)
+            else:
+                base = lay["beds"] + (lay.get("sofa_beds", 0) if self.include_sofa_beds else 0)
+        else:
+            base = {
+                self.Rule.FIXED: 1,
+                self.Rule.PER_BEDROOM: lay["bedrooms"],
+                self.Rule.PER_BATHROOM: lay["bathrooms"],
+                self.Rule.PER_GUEST: lay["sleeps"],
+            }[self.rule]
         return base * self.multiplier
+
+
+def simple_layout(bedrooms, bathrooms, beds, sofa_beds=0):
+    size = settings.UNIT["DEFAULT_BED_SIZE"]
+    per = settings.UNIT["SLEEPS_PER_BED"].get(size, 2)
+    return {"bedrooms": bedrooms, "bathrooms": bathrooms, "beds": beds, "sofa_beds": sofa_beds,
+            "sleeps": beds * per + sofa_beds * settings.UNIT["SLEEPS_PER_SOFA_BED"], "beds_by_size": {size: beds}}
 
 
 class ItemAlternative(models.Model):
@@ -97,7 +118,14 @@ class Order(models.Model):
         CARTS_BUILT = "carts_built", "Carts staged for review"
         APPROVED = "approved", "Approved and placed"
 
+    class Kind(models.TextChoices):
+        FULL = "full", "Full kit"
+        TOP_UP = "top_up", "Top-up / replacement"
+
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="orders")
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.FULL)
+    layout = models.JSONField(default=dict, blank=True, help_text="Snapshot of the unit layout the quantities came from")
+    budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     bedrooms = models.PositiveSmallIntegerField()
     bathrooms = models.PositiveSmallIntegerField()
@@ -114,7 +142,19 @@ class Order(models.Model):
         return f"Order {self.pk} for {self.property.nickname}"
 
 
+class PurchaseStatus(models.TextChoices):
+    TO_BUY = "to_buy", "To buy"
+    ORDERED = "ordered", "Ordered"
+    SHIPPED = "shipped", "Shipped"
+    DELIVERED = "delivered", "Delivered"
+    MISSING = "missing", "Missing"
+    DAMAGED = "damaged", "Damaged"
+    RETURNED = "returned", "Returned"
+
+
 class OrderLine(models.Model):
+    PurchaseStatus = PurchaseStatus
+
     class Resolution(models.TextChoices):
         NONE = "", "None"
         REPLACE = "replace", "Use replacement"
@@ -143,6 +183,18 @@ class OrderLine(models.Model):
     # Filled when the line is switched to a replacement
     replaced_from = models.CharField(max_length=200, blank=True)
 
+    # --- purchase tracking (after approval) ---
+    purchase_status = models.CharField(max_length=10, choices=PurchaseStatus.choices, default=PurchaseStatus.TO_BUY)
+    store_order_number = models.CharField(max_length=80, blank=True)
+    actual_unit_price = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True)
+    quantity_received = models.PositiveSmallIntegerField(null=True, blank=True)
+    ordered_at = models.DateField(null=True, blank=True)
+    expected_delivery = models.DateField(null=True, blank=True)
+    delivered_at = models.DateField(null=True, blank=True)
+    receipt = models.FileField(upload_to="receipts/%Y/%m/", blank=True)
+    purchase_notes = models.CharField(max_length=300, blank=True)
+    carried_over = models.BooleanField(default=False, help_text="A replacement was added to a top-up order")
+
     class Meta:
         ordering = ["category", "id"]
 
@@ -160,6 +212,17 @@ class OrderLine(models.Model):
     @property
     def included(self) -> bool:
         return self.resolution != self.Resolution.REMOVE and self.quantity > 0
+
+    @property
+    def actual_total(self) -> Decimal:
+        price = self.actual_unit_price if self.actual_unit_price is not None else self.unit_price
+        return price * self.quantity
+
+    @property
+    def is_late(self) -> bool:
+        from django.utils import timezone
+        return (self.purchase_status in (PurchaseStatus.ORDERED, PurchaseStatus.SHIPPED) and self.expected_delivery is not None
+                and self.expected_delivery < timezone.localdate())
 
     @property
     def needs_decision(self) -> bool:

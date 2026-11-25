@@ -46,7 +46,7 @@ class ImporterTests(TestCase):
     def test_reimport_updates(self):
         call_command("import_master_list", verbosity=0)
         call_command("import_master_list", verbosity=0)
-        self.assertEqual(MasterItem.objects.count(), 59)
+        self.assertEqual(MasterItem.objects.count(), 68)
 
 
 SIM = override_settings(PROCUREMENT={"OVER_PRICE_THRESHOLD": 0.25, "PRICE_CHECKER": "simulated"})
@@ -119,7 +119,7 @@ class OrderFlowTests(TestCase):
 class ProcurementApiTests(TestCase):
     def setUp(self):
         call_command("import_master_list", verbosity=0)
-        get_user_model().objects.create_user("ops", password="pw-12345678")
+        get_user_model().objects.create_superuser("ops", "ops@example.com", "pw-12345678")
         self.c = APIClient()
         self.c.login(username="ops", password="pw-12345678")
         self.p = unlocked_property()
@@ -147,7 +147,7 @@ class ProcurementApiTests(TestCase):
         with open(path, "rb") as f:
             r = self.c.post("/api/master-items/import/", {"file": f}, format="multipart")
         self.assertEqual(r.status_code, 200, r.data)
-        self.assertEqual(r.data["updated"], 59)
+        self.assertEqual(r.data["updated"], 68)
 
 
 class WebCheckerTests(TestCase):
