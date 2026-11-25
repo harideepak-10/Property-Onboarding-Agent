@@ -183,6 +183,8 @@ frontend/src/
 
 The Django admin is at `https://<api-address>/admin/`, with the same login.
 
+To change the password (no Shell needed): edit `DEMO_PASSWORD` in the API's **Environment** tab and save. Render redeploys, and `start.sh` runs `ensure_admin`, which sets the new password.
+
 ### Free plan limits
 
 These are fine for a client demo:
