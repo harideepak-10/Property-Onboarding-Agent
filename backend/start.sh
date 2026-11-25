@@ -2,6 +2,7 @@
 # Render start command: migrate, optionally load demo data, then serve.
 set -o errexit
 python manage.py migrate --noinput
+python manage.py ensure_admin
 if [ "${SEED_DEMO:-false}" = "true" ]; then
   python manage.py seed_demo
 fi
