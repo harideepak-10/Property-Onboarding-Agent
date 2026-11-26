@@ -141,9 +141,17 @@ export const api = {
   addExpense: (data) => request('POST', '/expenses/', data),
   deleteExpense: (id) => request('DELETE', `/expenses/${id}/`),
   costs: (id) => request('GET', `/properties/${id}/costs/`),
-  // reports, decisions, users, digest
+  // reports, users, digest
   reports: () => request('GET', '/reports/'),
-  decisions: () => request('GET', '/decisions/'),
+  report: (key, params = {}) => request('GET', `/reports/${key}/?` + new URLSearchParams(params)),
+  reportFile: async (key, params, kind) => {
+    const res = await request('GET', `/reports/${key}/?` + new URLSearchParams({ ...params, export: kind }), undefined, { raw: true })
+    if (!res.ok) throw new ApiError((await res.json().catch(() => null))?.detail || 'Could not create the file.')
+    const name = (res.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] || `${key}.${kind}`
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(await res.blob()); a.download = name; a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  },
   digest: () => request('GET', '/digest/'),
   sendDigest: () => request('POST', '/digest/'),
   users: () => request('GET', '/auth/users/'),

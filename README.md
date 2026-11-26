@@ -76,7 +76,7 @@ The demo data includes illustrated sample photos (not real units) for two proper
   - Stores that block automated requests, or items without a link, are marked "Check by hand" and priced at the typical price. They don't block the order.
   - Keep `PRICE_CHECKER=simulated` for demos with the sample list, which has no product links.
 
-**Phase 5** covers the operations around the 12 steps, plus decisions on the client's open questions:
+**Phase 5** covers the operations around the 12 steps, plus defaults for the client's open questions (see *Decisions on open questions* below):
 - **Unit tab** (step 2): bedrooms with bed sizes, sofa beds and sleeping capacity; keys, fobs, parking and locker; utilities and internet with provider, account and monthly cost. Saving ticks "Keys and fobs registered", "Parking registered", "Utilities set up" and "Internet set up" when the details are complete.
 - **Smarter quantities:** a new *per guest* rule (glasses), size-specific bedding (twin rooms get twin sheets), and sofa beds counted for bedding but not mattresses. Warns when the master list has no item for a bed size in the unit (e.g. king sheets).
 - **Purchasing tracker:**
@@ -90,7 +90,6 @@ The demo data includes illustrated sample photos (not real units) for two proper
 - **Roles:** admin, manager, coordinator, viewer (Users page). Managers approve orders, send emails and go live; coordinators do the work; viewers read.
 - **Daily digest:** `run_agent_sweeps --digest` emails a summary (blocked, late deliveries, visits this week, expiring licences) and posts to Slack if `SLACK_WEBHOOK_URL` is set.
 - **Background agents:** set `AGENTS_ASYNC=true` to run agents in a background thread; the page polls the run.
-- **Decisions page:** every open question we answered with a default, why, and where to change it (`backend/config/decisions.py`).
 
 ### Dry-run mode
 Without credentials, nothing leaves the system. The agents record what they *would* have done, and the app marks those steps "Dry run".
@@ -160,22 +159,43 @@ backend/
   agents/        Intake + Compliance agents, email drafts, buildings, Claude/Google integrations
   listings/      Photos, listing profile, Guesty client, Listing agent, readiness, guest guide, go-live
   operations/    Visits, inspections and condition reports, expenses, cost and timeline reports, digest
-  config/decisions.py   Defaults chosen for the client's open questions (shown on the Decisions page)
   tests/         Engine, procurement and API tests
 frontend/src/
   pages/         Dashboard, Properties, PropertyDetail (+ property/ tabs), Procurement, Purchasing, Schedule, Reports,
-                 Decisions, Users, MasterList, Approvals, Licences, Buildings, Login
+                 Users, MasterList, Approvals, Licences, Buildings, Login
   components/    Layout, NewPropertyDialog, ui (icons, pills, toast)
 ```
 
 ## Assumptions to confirm with the client
 - **Nickname format:** A + sequence, city code, first 3 letters of the street + unit number.
-- See the **Decisions** page (or `backend/config/decisions.py`) for every default we chose: glasses per guest, sleeps 2 per bed, sofa beds get bedding but no mattress, required utilities, roles and more.
 - **Typical price:** a fixed reference price, updated whenever the master list is re-imported.
 - **Over-price threshold:** 25%. Change it with `OVER_PRICE_THRESHOLD`.
 
 - **Licence packet:** the default packet list is a placeholder. The City of Toronto's exact requirements need confirming (`AGENTS["LICENCE_PACKET"]` in settings).
 - **Unit email format:** `{street}{unit}@<domain>`, e.g. que1204@…
+
+## Decisions on open questions
+Defaults we chose so the build wasn't blocked. The client can confirm or change any of them.
+
+| Area | Question | Decision | How to change |
+|---|---|---|---|
+| Supplies | Glasses: per bed or per guest? | Per guest. Wine and drinking glasses use a new 'per guest (sleeps)' rule, 1 each per guest. | Master list → rule and multiplier on each item. |
+| Supplies | How is 'sleeps' worked out? | 2 per king/queen/double bed, 1 per twin, 2 per sofa bed. Can be overridden per unit. | UNIT.SLEEPS_PER_BED / SLEEPS_PER_SOFA_BED in settings; 'Sleeps override' on the Unit tab. |
+| Supplies | Do sofa beds count as beds for purchasing? | For bedding and pillows yes (double size); for mattresses and bed frames no. | Master list → 'Count sofa beds' on each per-bed item; UNIT.SOFA_BED_SIZE. |
+| Supplies | Different bed sizes in one unit (e.g. twins in the second bedroom)? | Each bedroom records its bed size and count. Size-specific items (mattress, frame, sheets, duvet) only count beds of their size. | Unit tab → bedrooms; master list → 'Bed size' on each item. |
+| Supplies | Blackout curtains: standard kit or decor? | Standard kit, one pair per bedroom. Living-room curtains are decor (picked by hand). | Master list. |
+| Supplies | What does 'typical price' mean, and when is an item flagged? | Typical price is the master-list reference price, updated whenever the list is re-imported. Flag at more than 25% over it, or out of stock. | PROCUREMENT.OVER_PRICE_THRESHOLD (0.25). |
+| Purchasing | Who places the orders and how do we know they arrived? | The team checks out each store cart, then marks it ordered (with the store order number and expected date). Each line is marked delivered, missing or damaged on arrival. Missing/damaged lines roll into a top-up order. | — |
+| Purchasing | Who can approve an order? | Managers and admins. Coordinators prepare orders but can't approve them. | Users page → role. |
+| Admin setup | Which utilities must be set up before step 2 is done? | Electricity and internet. Water and gas are tracked but optional (often included by the building). | REQUIRED_UTILITIES env var (comma-separated). |
+| Admin setup | When are 'Keys and fobs registered' and 'Parking registered' done? | Automatically when the Unit tab shows at least one key or fob and the building has confirmed registration; parking when registered (or the unit has no parking). | — |
+| Inspection | What does the inspection cover? | A standard checklist per room (entry, kitchen, living, each bedroom, each bathroom, laundry, safety) with condition, action and estimated cost, plus room measurements. Rooms in feet, windows in inches. | Items can be added per inspection; the default list is in operations/services.py. |
+| Photography | When do we chase the photographer? | 3 days after the shoot with no Drive link, a follow-up email is drafted for approval. | PHOTO_FOLLOWUP_DAYS env var. |
+| Listing | Nickname format | Kept as A<sequence>-<CITY>-<STREET3><UNIT>, e.g. A37313-TOR-BAY617, numbering from 37331. | ONBOARDING.NICKNAME_START; properties/services.py for the format. |
+| Licence | Unit email format and licence documents | Unit email is {street}{unit}@domain. The licence packet list stays a placeholder until the client sends the City of Toronto requirements. | UNIT_EMAIL_DOMAIN / UNIT_EMAIL_PATTERN; AGENTS.LICENCE_PACKET. |
+| Team | Who can do what? | Four roles: admin (everything + users), manager (approvals, sending emails, go-live, master list), coordinator (day-to-day work), viewer (read-only). | Users page. |
+| Notifications | How does the team hear about problems? | A daily digest email to the ops inbox (blocked steps, late deliveries, visits this week, expiring licences, drafts waiting). Optional Slack via a webhook. | DIGEST_TO, SLACK_WEBHOOK_URL env vars; run_agent_sweeps --digest. |
+| Costs | What counts in the cost per property? | Approved purchases (actual price when entered, otherwise the cart price), decor, and expenses (licence fee, inspection, photography, labour, repairs, building fees). Monthly utilities are shown separately. | — |
 
 ## Deploy to Render
 

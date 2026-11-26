@@ -17,7 +17,6 @@ import Buildings from './pages/Buildings'
 import Purchasing from './pages/Purchasing'
 import Schedule from './pages/Schedule'
 import Reports from './pages/Reports'
-import Decisions from './pages/Decisions'
 import Users from './pages/Users'
 
 function App() {
@@ -51,7 +50,6 @@ function App() {
         <Route path="purchasing" element={<Purchasing />} />
         <Route path="schedule" element={<Schedule />} />
         <Route path="reports" element={<Reports />} />
-        <Route path="decisions" element={<Decisions />} />
         <Route path="users" element={<Users />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

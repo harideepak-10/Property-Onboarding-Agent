@@ -11,7 +11,6 @@ from rest_framework.decorators import api_view
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from config.decisions import DECISIONS
 from onboarding.views import domain_errors
 from procurement import services as proc
 from procurement.models import Order, OrderLine, PurchaseStatus
@@ -267,12 +266,29 @@ def property_costs(request, pk):
 
 @api_view(["GET"])
 def reports(request):
-    return Response({"costs": services.portfolio_costs(), "timeline": services.timeline_report()})
+    from . import reports as rp
+    return Response({"costs": services.portfolio_costs(), "timeline": services.timeline_report(),
+                     "catalog": [{"key": k, "title": t, "about": a} for k, (t, a) in rp.REPORTS.items()],
+                     "periods": [{"value": v, "label": l} for v, l in rp.PERIODS]})
 
 
 @api_view(["GET"])
-def decisions(request):
-    return Response(DECISIONS)
+@domain_errors
+def report(request, key):
+    """One report, on screen (JSON) or downloaded with ?export=pdf|xlsx|csv."""
+    from . import reports as rp
+    rep = rp.make(key, request.query_params)
+    kind = request.query_params.get("export")
+    if kind == "pdf":
+        resp = HttpResponse(rp.to_pdf(rep), content_type="application/pdf")
+    elif kind == "xlsx":
+        resp = HttpResponse(rp.to_xlsx(rep), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    elif kind == "csv":
+        resp = HttpResponse(rp.to_csv(rep), content_type="text/csv")
+    else:
+        return Response(rp.to_json(rep))
+    resp["Content-Disposition"] = f'attachment; filename="{rp.filename(rep, kind)}"'
+    return resp
 
 
 @api_view(["GET", "POST"])

@@ -282,7 +282,41 @@ class RoleApiTests(TestCase):
         self.assertEqual(r.data["layout"]["beds"], 1)
         self.assertEqual(a.get(f"/api/properties/{self.p.id}/costs/").status_code, 200)
         self.assertEqual(a.get("/api/reports/").status_code, 200)
-        self.assertTrue(len(a.get("/api/decisions/").data) > 10)
         r = a.post("/api/inspections/", {"property": self.p.id}, format="json")
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual(a.get(f"/api/inspections/{r.data['id']}/report/").status_code, 200)
+
+
+class ReportExportTests(TestCase):
+    def setUp(self):
+        call_command("import_master_list", verbosity=0)
+        self.p = prop_at(steps_done=(1, 2, 4))
+        approved_order(self.p)
+        Expense.objects.create(property=self.p, category="cleaning", description="Clean", amount=Decimal("200"), date=timezone.localdate())
+        self.c = APIClient()
+        self.c.force_authenticate(get_user_model().objects.create_superuser("rep", "r@example.com", "pw-12345678"))
+
+    def test_every_report_in_every_format(self):
+        for key, params in [("portfolio", {"period": "all"}), ("property", {"property": self.p.id}),
+                            ("spending", {"period": "this_month"}), ("licences", {})]:
+            r = self.c.get(f"/api/reports/{key}/", params)
+            self.assertEqual(r.status_code, 200, (key, getattr(r, "data", r.content[:200])))
+            self.assertTrue(r.data["sections"])
+            for kind, magic in [("pdf", b"%PDF"), ("xlsx", b"PK"), ("csv", b"")]:
+                f = self.c.get(f"/api/reports/{key}/", {**params, "export": kind})
+                self.assertEqual(f.status_code, 200, (key, kind))
+                self.assertTrue(f.content.startswith(magic), (key, kind))
+                self.assertIn("attachment", f["Content-Disposition"])
+
+    def test_spending_counts_period(self):
+        from operations.reports import make
+        rep = make("spending", {"period": "this_month"})
+        total = rep["kpis"][0]["value"]
+        self.assertGreater(total, Decimal("200"))
+        last = make("spending", {"period": "custom", "from": "2020-01-01", "to": "2020-01-31"})
+        self.assertEqual(last["kpis"][0]["value"], 0)
+
+    def test_bad_input(self):
+        self.assertEqual(self.c.get("/api/reports/property/").status_code, 400)
+        self.assertEqual(self.c.get("/api/reports/spending/", {"period": "custom", "from": "2026-02-01", "to": "2026-01-01"}).status_code, 400)
+        self.assertEqual(self.c.get("/api/reports/nope/").status_code, 400)

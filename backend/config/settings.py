@@ -125,6 +125,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [o.rstrip("/") for o in env_list(
     "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 )]
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]  # lets the website read download file names
 
 # --- Business settings ---
 ONBOARDING = {
@@ -199,7 +200,7 @@ LISTINGS = {
     "TIMEZONE": "America/Toronto",
 }
 
-# --- Unit layout and operations defaults (see config/decisions.py for why) ---
+# --- Unit layout and operations defaults (the README's 'Decisions on open questions' explains why) ---
 UNIT = {
     "SLEEPS_PER_BED": {"king": 2, "queen": 2, "double": 2, "twin": 1},
     "SLEEPS_PER_SOFA_BED": 2,

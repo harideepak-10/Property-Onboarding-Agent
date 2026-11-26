@@ -5,7 +5,7 @@ import { Icon, ROLE_LABEL } from './ui'
 import NewPropertyDialog from './NewPropertyDialog'
 import CommandPalette from './CommandPalette'
 
-const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', decisions: 'Decisions', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
+const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
 const INT_LABEL = { live: 'live', dry_run: 'dry run', heuristic: 'basic reader' }
 
 export default function Layout({ user, onLogout }) {
@@ -54,7 +54,6 @@ export default function Layout({ user, onLogout }) {
         <div className="nav-label">Insights</div>
         <nav className="nav" aria-label="Insights">
           <NavLink to="/reports"><Icon name="chart" />Reports</NavLink>
-          <NavLink to="/decisions"><Icon name="scale" />Decisions</NavLink>
           {user?.permissions?.includes('manage_users') && <NavLink to="/users"><Icon name="users" />Users</NavLink>}
         </nav>
         {integ && <div className="side-promo">

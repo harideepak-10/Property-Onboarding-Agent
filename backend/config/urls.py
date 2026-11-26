@@ -37,7 +37,7 @@ api = [
     path("orders/<int:pk>/mark-store/", op.mark_store),
     path("purchasing/", op.purchasing),
     path("reports/", op.reports),
-    path("decisions/", op.decisions),
+    path("reports/<str:key>/", op.report),
     path("digest/", op.digest),
     path("dashboard/", ob.dashboard),
     path("tasks/<int:pk>/set/", ob.set_task),
