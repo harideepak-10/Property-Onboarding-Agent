@@ -24,6 +24,7 @@ export default function AgentRun({ run, animate = false }) {
     <div style={{ display: 'grid', gap: 12 }}>
       <div className="row" style={{ gap: 8 }}><b className="sm">{run.agent_label}</b><span className={`pill ${cls}`}>{label}</span>
         <span className="spacer" /><span className="muted sm">{new Date(run.started_at).toLocaleString('en-CA', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span></div>
+      <div className="agent-progress" aria-hidden="true"><i style={{ width: `${run.trace.length ? Math.round(shown / run.trace.length * 100) : 100}%` }} /></div>
       <ul className="trace">
         {run.trace.slice(0, shown).map((s, i) => (
           <li key={i}><span className={`tdot ${s.status}`}><Icon name={ICON[s.status] || 'check'} small /></span>

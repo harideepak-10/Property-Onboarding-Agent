@@ -66,6 +66,14 @@ export default function PropertyDetail() {
         <div className="ss"><div className="kpi-ic ic-acc"><Icon name="user" small /></div><div><b>{p.owner_name}</b><span>{p.owner_type === 'agent' ? 'Agent' : 'Owner'}{p.lease_end ? ` · lease to ${p.lease_end}` : ''}</span></div></div>
       </section>
 
+      <section className="card">
+        <div className="card-h"><h2>Journey</h2><span className="sub">Signed agreement → live listing</span><span className="spacer" />
+          {p.current_step && <span className="muted sm">Now: <b style={{ color: 'var(--ink)' }}>{p.current_step.number}. {p.current_step.name}</b> · {p.current_step.owner}</span>}</div>
+        <div className="journey">{p.steps.map(s => (
+          <div key={s.id} className={`jt ${s.status} ${p.current_step?.number === s.number ? 'cur' : ''}`} title={`${s.number}. ${s.name} — ${STEP_STATUS[s.status]?.[1] || s.status}`}>
+            <i /><span>{s.number}. {s.name}</span></div>))}</div>
+      </section>
+
       <div className="ptabs" role="tablist">
         {[['onboarding', 'list', 'Onboarding', `${p.progress}%`], ['unit', 'key', 'Unit', `${p.steps[1]?.tasks.filter(t => t.done).length || 0}/${p.steps[1]?.tasks.length || 7}`],
           ['inspection', 'checkc', 'Inspection', p.steps[3]?.status === 'done' ? 'Done' : `${p.steps[3]?.tasks.filter(t => t.done).length || 0}/4`],

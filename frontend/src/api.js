@@ -5,12 +5,34 @@ export function getToken() {
   try { return localStorage.getItem('token') } catch { return null }
 }
 export function setToken(t) {
+  cache.clear()
   try { t ? localStorage.setItem('token', t) : localStorage.removeItem('token') } catch { /* storage blocked */ }
 }
 
 export class ApiError extends Error {}
 
-async function request(method, path, body, { raw = false } = {}) {
+// Page data is kept for a short time so moving between sections is instant.
+// Any change (POST/PUT/PATCH/DELETE) clears it, so nothing shown is out of date after an edit.
+const CACHE_MS = 60_000
+const cache = new Map()      // path -> { at, data }
+const inflight = new Map()   // path -> promise (two components asking at once share one request)
+export function clearCache() { cache.clear() }
+
+function request(method, path, body, opts = {}) {
+  if (method !== 'GET' || opts.raw) {
+    if (method !== 'GET') cache.clear()
+    return send(method, path, body, opts)
+  }
+  const hit = cache.get(path)
+  if (hit && Date.now() - hit.at < CACHE_MS) return Promise.resolve(structuredClone(hit.data))
+  if (!inflight.has(path)) {
+    inflight.set(path, send('GET', path).then(data => { cache.set(path, { at: Date.now(), data }); return data })
+      .finally(() => inflight.delete(path)))
+  }
+  return inflight.get(path).then(d => structuredClone(d))
+}
+
+async function send(method, path, body, { raw = false } = {}) {
   const headers = {}
   const token = getToken()
   if (token) headers.Authorization = `Token ${token}`

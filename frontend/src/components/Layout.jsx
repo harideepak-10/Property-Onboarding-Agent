@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { Icon, ROLE_LABEL } from './ui'
 import NewPropertyDialog from './NewPropertyDialog'
+import CommandPalette from './CommandPalette'
 
 const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', decisions: 'Decisions', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
 const INT_LABEL = { live: 'live', dry_run: 'dry run', heuristic: 'basic reader' }
@@ -13,7 +14,7 @@ export default function Layout({ user, onLogout }) {
   const [counts, setCounts] = useState({ onboarding: 0, alerts: 0, drafts: 0 })
   const [integ, setInteg] = useState(null)
   const [newOpen, setNewOpen] = useState(false)
-  const [q, setQ] = useState('')
+  const [cmdk, setCmdk] = useState(false)
   const section = loc.pathname.split('/')[1] || ''
 
   useEffect(() => {
@@ -24,21 +25,20 @@ export default function Layout({ user, onLogout }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
-        e.preventDefault(); document.getElementById('global-search')?.focus()
-      }
+      const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)
+      if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing)) { e.preventDefault(); setCmdk(true) }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  const search = (e) => { e.preventDefault(); nav(`/properties?q=${encodeURIComponent(q)}`) }
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform)
   const initials = (user?.name || 'U').split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <div className="app">
       <aside className="side">
-        <div className="logo"><div className="logo-mark">PO</div><div><b>Onboarding</b><span>STR operations</span></div></div>
+        <div className="logo"><div className="logo-mark">PO</div><div><b>Onboarding</b><span>Short-term rentals</span></div></div>
         <div className="nav-label">Workspace</div>
         <nav className="nav" aria-label="Main">
           <NavLink to="/" end><Icon name="grid" />Dashboard</NavLink>
@@ -76,18 +76,18 @@ export default function Layout({ user, onLogout }) {
         <header className="topbar">
           <div className="crumbs"><span>Workspace</span><span>/</span><b>{TITLES[section] || 'Properties'}</b></div>
           <span className="spacer" />
-          <form className="search" onSubmit={search}>
-            <Icon name="search" small />
-            <input id="global-search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search properties" aria-label="Search properties" />
-            <span className="kbd">/</span>
-          </form>
+          <button type="button" className="search" onClick={() => setCmdk(true)} aria-label="Search">
+            <Icon name="search" small /><span style={{ flex: 1, textAlign: 'left' }}>Search properties, pages…</span>
+            <span className="kbd">{mac ? '⌘' : 'Ctrl'} K</span>
+          </button>
           <button className="icon-btn" type="button" aria-label="Alerts" onClick={() => nav('/')}>
             <Icon name="alert" />{counts.alerts > 0 && <span className="dot">{counts.alerts}</span>}
           </button>
           <button className="btn primary" type="button" onClick={() => setNewOpen(true)}><Icon name="plus" small />New property</button>
         </header>
-        <main className="content"><Outlet /></main>
+        <main className="content"><div className="page" key={loc.pathname}><Outlet /></div></main>
       </div>
+      <CommandPalette open={cmdk} onClose={() => setCmdk(false)} onNewProperty={() => setNewOpen(true)} />
       {newOpen && <NewPropertyDialog onClose={() => setNewOpen(false)} onCreated={(p, run) => { setNewOpen(false); nav(`/properties/${p.id}`, { state: { run } }) }} />}
     </div>
   )

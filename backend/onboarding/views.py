@@ -170,4 +170,24 @@ def dashboard(request):
         "attention": attention,
         "pipeline": pipeline,
         "properties": rows,
+        **_dashboard_extras(today),
     })
+
+
+def _dashboard_extras(today):
+    """Recent activity, the week's visits and purchasing totals for the dashboard."""
+    from operations.models import Visit
+    from procurement.models import OrderLine
+    from properties.models import ActivityLog
+    activity = [{"id": a.id, "property": a.property_id, "nickname": a.property.nickname, "actor": a.actor,
+                 "message": a.message, "created_at": a.created_at}
+                for a in ActivityLog.objects.select_related("property").exclude(actor="System")[:10]]
+    visits = [{"id": v.id, "property": v.property_id, "nickname": v.property.nickname, "kind": v.kind,
+               "kind_label": v.get_kind_display(), "date": v.date, "time": v.time, "assigned_to": v.assigned_to}
+              for v in Visit.objects.filter(date__gte=today, date__lte=today + timedelta(days=7), status="booked")
+              .select_related("property").order_by("date")[:6]]
+    lines = [l for l in OrderLine.objects.filter(order__status="approved").exclude(resolution="remove") if l.quantity]
+    spend = {"planned": str(sum((l.line_total for l in lines), 0)),
+             "delivered": sum(1 for l in lines if l.purchase_status == "delivered"),
+             "lines": len(lines), "late": sum(1 for l in lines if l.is_late)}
+    return {"activity": activity, "visits": visits, "spend": spend}

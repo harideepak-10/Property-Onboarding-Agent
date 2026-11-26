@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
-import { ErrorBox, Icon, Loading, Pill, STATE } from '../components/ui'
+import { ErrorBox, Icon, Loading, Pill, STATE, PhotoPlaceholder } from '../components/ui'
 
 const STATES = [['blocked', 'Blocked'], ['waiting', 'Waiting'], ['on_track', 'On track'], ['live', 'Live']]
 const ORDER = { blocked: 0, waiting: 1, on_track: 2, live: 3 }
@@ -55,7 +55,7 @@ export default function Properties() {
             <article className="res card" key={p.id}>
               <button className="res-photo" type="button" onClick={() => nav(`/properties/${p.id}`)} aria-label={`Open ${p.nickname}`}>
                 {p.cover_url ? <img src={p.cover_url} alt={p.listing_title || p.address} />
-                  : <div className="prop-avatar">{p.street_name.replace(/^(the|st\.?)\s+/i, '').slice(0, 3).toUpperCase()}<br /><span className="mono" style={{ fontSize: 14, opacity: .8 }}>Unit {p.unit}</span></div>}
+                  : <PhotoPlaceholder p={p} />}
                 <span className="res-badge"><Pill map={STATE} value={p.state} /></span>
               </button>
               <div className="res-body">

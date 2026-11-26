@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 
 const PATHS = {
   grid: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
@@ -93,15 +93,67 @@ export function ToastProvider({ children }) {
 }
 export const useToast = () => useContext(ToastCtx)
 
-export function Loading() { return <div className="loading">Loading…</div> }
+export function Loading() {
+  return <div className="skel" aria-busy="true" aria-label="Loading">
+    <i style={{ height: 44, width: '38%' }} />
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>{[0, 1, 2, 3].map(k => <i key={k} style={{ height: 104 }} />)}</div>
+    <i style={{ height: 320 }} />
+  </div>
+}
+
+/** Counts up to a number once it appears. Non-numbers are shown as-is. */
+export function CountUp({ value, duration = 900, format }) {
+  const n = typeof value === 'number' ? value : Number(String(value).replace(/[^0-9.-]/g, ''))
+  const numeric = value !== '' && value !== null && !Number.isNaN(n) && /^[\d.,$-]+%?$/.test(String(value).trim())
+  const [shown, setShown] = useState(numeric ? 0 : value)
+  useEffect(() => {
+    if (!numeric) { setShown(value); return }
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { setShown(n); return }
+    let raf, start
+    const tick = (t) => {
+      start ??= t
+      const p = Math.min(1, (t - start) / duration)
+      setShown(n * (1 - Math.pow(1 - p, 3)))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  if (!numeric) return <>{value}</>
+  if (format) return <>{format(shown)}</>
+  const decimals = (String(value).match(/\.(\d+)/)?.[1] || '').length
+  return <>{String(value).trim().startsWith('$') ? '$' : ''}{shown.toLocaleString('en-CA', { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}{String(value).trim().endsWith('%') ? '%' : ''}</>
+}
+
+/** Tiny decorative area chart for KPI cards. */
+export function Spark({ points, color = 'var(--accent)' }) {
+  if (!points?.length) return null
+  const max = Math.max(1, ...points), w = 100, h = 40
+  const xy = points.map((v, i) => [i / Math.max(1, points.length - 1) * w, h - (v / max) * (h - 6) - 3])
+  const line = xy.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const id = 'g' + Math.round(Math.random() * 1e6)
+  return <svg className="spark" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" aria-hidden="true">
+    <defs><linearGradient id={id} x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor={color} stopOpacity=".18" /><stop offset="1" stopColor={color} stopOpacity="0" /></linearGradient></defs>
+    <path d={`${line} L${w},${h} L0,${h} Z`} fill={`url(#${id})`} /><path d={line} fill="none" stroke={color} strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+  </svg>
+}
 export function ErrorBox({ error }) { return error ? <div className="error">{String(error.message || error)}</div> : null }
 
-export function Kpi({ tone, icon, label, value, detail }) {
+export function Kpi({ tone, icon, label, value, detail, spark }) {
   return (
     <div className="card kpi">
+      {spark && <Spark points={spark} />}
       <div className="kpi-top">{label}<div className={`kpi-ic ${tone}`}><Icon name={icon} small /></div></div>
-      <div className="v">{value}</div>
+      <div className="v"><CountUp value={value} /></div>
       <div className="d">{detail}</div>
     </div>
   )
+}
+
+const PH = ['linear-gradient(135deg,#1f5c52,#7fb5a6)', 'linear-gradient(135deg,#6b5a49,#c9b49c)', 'linear-gradient(135deg,#3d4f6b,#9fb1cc)', 'linear-gradient(135deg,#7a4b3a,#d19a7f)', 'linear-gradient(135deg,#4d5a3b,#a9b98a)']
+/** Shown until a property has photos: a calm colour field with the street initial. */
+export function PhotoPlaceholder({ p }) {
+  const street = p.street_name || ''
+  return <div className="ph-empty" style={{ '--ph-bg': PH[(p.id || 0) % PH.length] }}>
+    <div>{street.replace(/^(the|st\.?)\s+/i, '').slice(0, 1)}<small>{street}{p.unit ? ` · ${p.unit}` : ''}</small></div></div>
 }

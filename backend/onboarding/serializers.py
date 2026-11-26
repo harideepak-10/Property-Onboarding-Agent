@@ -81,7 +81,12 @@ class PropertyListSerializer(serializers.ModelSerializer):
         model = Property
         fields = ["id", "nickname", "cover_url", "listing_title", "address", "street_number", "street_name", "unit", "city",
                   "owner_name", "owner_type", "bedrooms", "bathrooms", "beds", "lease_start", "lease_end",
-                  "progress", "state", "current_step", "needs", "licence", "created_at"]
+                  "progress", "state", "current_step", "needs", "licence", "created_at", "step_statuses"]
+
+    step_statuses = serializers.SerializerMethodField()
+
+    def get_step_statuses(self, obj):
+        return list(obj.steps.order_by("template__number").values_list("status", flat=True))
 
     def _cache(self, obj):
         if not hasattr(obj, "_summary"):
