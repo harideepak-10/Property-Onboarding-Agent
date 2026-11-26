@@ -159,6 +159,7 @@ INTEGRATIONS = {
     "ANTHROPIC_MODEL": os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5"),
     # Google service account JSON (with domain-wide delegation for Gmail and Admin SDK)
     "GOOGLE_SERVICE_ACCOUNT_FILE": os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", ""),
+    "GOOGLE_SERVICE_ACCOUNT_JSON": os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON", ""),   # the key file's contents; use on Render
     "GOOGLE_DELEGATED_ADMIN": os.getenv("GOOGLE_DELEGATED_ADMIN", ""),     # Workspace admin to act as (Admin SDK)
     "GOOGLE_SENDER_EMAIL": os.getenv("GOOGLE_SENDER_EMAIL", ""),           # mailbox that sends approved emails
     "GOOGLE_DRIVE_PARENT_FOLDER_ID": os.getenv("GOOGLE_DRIVE_PARENT_FOLDER_ID", ""),
@@ -170,6 +171,11 @@ AGENTS = {
     "UNIT_EMAIL_DOMAIN": os.getenv("UNIT_EMAIL_DOMAIN", "stays.example.com"),
     # Placeholders: {street} = 3-letter street code, {unit} = unit digits, {nickname} = full nickname
     "UNIT_EMAIL_PATTERN": os.getenv("UNIT_EMAIL_PATTERN", "{street}{unit}"),
+    # gmail_alias: ops+que1204@gmail.com (free, lands in the ops inbox, no new account)
+    # manual: suggest an address; the team creates the Gmail account and saves it on the property
+    # workspace: create a real Google Workspace user (needs Admin SDK and a paid licence per unit)
+    "UNIT_EMAIL_MODE": os.getenv("UNIT_EMAIL_MODE", "gmail_alias"),
+    "UNIT_EMAIL_BASE": os.getenv("UNIT_EMAIL_BASE", ""),   # inbox the aliases point to; defaults to OPS_EMAIL
     "OPS_EMAIL": os.getenv("OPS_EMAIL") or "ops@stays.example.com",
     "FOLLOWUP_DAYS": int(os.getenv("FOLLOWUP_DAYS", "5")),
     "DRIVE_SUBFOLDERS": ["Agreement", "Building registration", "Licence", "Inspection", "Orders", "Photos"],

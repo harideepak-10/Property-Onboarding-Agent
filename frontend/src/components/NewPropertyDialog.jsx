@@ -3,7 +3,7 @@ import { api } from '../api'
 import { ErrorBox, Icon, useToast } from './ui'
 
 const EMPTY = { owner_name: '', owner_type: 'owner', owner_email: '', owner_phone: '', street_number: '', street_name: '', unit: '',
-  postal_code: '', bedrooms: 1, bathrooms: 1, beds: 1, lease_start: '', lease_end: '', parking: '', locker: '' }
+  postal_code: '', bedrooms: 1, bathrooms: 1, beds: 1, lease_start: '', lease_end: '', parking: '', locker: '', nickname: '' }
 const REQUIRED = ['owner_name', 'street_number', 'street_name', 'unit', 'bedrooms', 'bathrooms', 'lease_start', 'lease_end']
 
 export default function NewPropertyDialog({ onClose, onCreated }) {
@@ -35,7 +35,7 @@ export default function NewPropertyDialog({ onClose, onCreated }) {
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null)
     const fields = { ...f, bedrooms: +f.bedrooms, bathrooms: +f.bathrooms, beds: +f.beds }
-    for (const k of ['lease_start', 'lease_end']) if (!fields[k]) delete fields[k]
+    for (const k of ['lease_start', 'lease_end', 'nickname']) if (!fields[k]) delete fields[k]
     try {
       if (doc) {
         const r = await api.createFromAgreement(doc.id, fields)
@@ -106,12 +106,14 @@ export default function NewPropertyDialog({ onClose, onCreated }) {
             {field('parking', 'Parking')}
             {field('lease_start', 'Lease start', { type: 'date' })}
             {field('lease_end', 'Lease end', { type: 'date' })}
+            <div className="field" style={{ gridColumn: '1/-1' }}><label htmlFor="np-nickname">Nickname <span className="muted">(optional)</span></label>
+              <input id="np-nickname" value={f.nickname || ''} onChange={set('nickname')} maxLength={40} placeholder="Any name or number, e.g. King Loft or 1204. Leave blank for A37331-TOR-KIN1204" /></div>
           </div>}
         </div>
         <div className="dlg-f">
           {doc ? <><button className="btn ghost small" type="button" onClick={() => { setDoc(null); setF(EMPTY) }}>Use a different file</button><span className="spacer" />
             <button className="btn primary" type="submit" disabled={busy}><Icon name="sparkle" small />{busy ? 'Creating…' : 'Create and run Intake agent'}</button></>
-            : <><span className="muted sm">{mode === 'manual' ? 'The nickname is generated automatically.' : ''}</span><span className="spacer" />
+            : <><span className="muted sm">{mode === 'manual' ? 'Leave the nickname blank to generate one.' : ''}</span><span className="spacer" />
               {mode === 'manual' && <button className="btn primary" type="submit" disabled={busy}>{busy ? 'Creating…' : 'Create property'}</button>}</>}
         </div>
       </form>

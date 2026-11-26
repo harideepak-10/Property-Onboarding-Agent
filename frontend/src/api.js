@@ -65,6 +65,7 @@ export const api = {
   properties: (q = '') => request('GET', '/properties/' + (q ? `?q=${encodeURIComponent(q)}` : '')),
   property: (id) => request('GET', `/properties/${id}/`),
   createProperty: (data) => request('POST', '/properties/', data),
+  updateProperty: (id, data) => request('PATCH', `/properties/${id}/`, data),
   updateLicence: (id, data) => request('PATCH', `/properties/${id}/licence/`, data),
   setTask: (id, data) => request('POST', `/tasks/${id}/set/`, data),
   blockStep: (id, reason) => request('POST', `/steps/${id}/block/`, { reason }),
@@ -141,6 +142,11 @@ export const api = {
   addExpense: (data) => request('POST', '/expenses/', data),
   deleteExpense: (id) => request('DELETE', `/expenses/${id}/`),
   costs: (id) => request('GET', `/properties/${id}/costs/`),
+  // contacts
+  vendors: (params = {}) => request('GET', '/vendors/?' + new URLSearchParams(params)),
+  saveVendor: (v) => v.id ? request('PATCH', `/vendors/${v.id}/`, v) : request('POST', '/vendors/', v),
+  deleteVendor: (id) => request('DELETE', `/vendors/${id}/`),
+  importContacts: (kind, file) => { const f = new FormData(); f.append('file', file); return request('POST', `/contacts/import/${kind}/`, f) },
   // reports, users, digest
   reports: () => request('GET', '/reports/'),
   report: (key, params = {}) => request('GET', `/reports/${key}/?` + new URLSearchParams(params)),

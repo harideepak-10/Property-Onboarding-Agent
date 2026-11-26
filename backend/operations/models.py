@@ -171,3 +171,29 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-sent_at"]
+
+
+class Vendor(models.Model):
+    """Handymen, photographers, cleaners and other people the team books for visits."""
+
+    class Kind(models.TextChoices):
+        HANDYMAN = "handyman", "Handyman / inspector"
+        PHOTOGRAPHER = "photographer", "Photographer"
+        CLEANER = "cleaner", "Cleaner"
+        MOVER = "mover", "Movers / assembly"
+        OTHER = "other", "Other"
+
+    name = models.CharField(max_length=160)
+    kind = models.CharField(max_length=14, choices=Kind.choices, default=Kind.OTHER)
+    company = models.CharField(max_length=160, blank=True)
+    email = models.EmailField(blank=True)
+    phone = models.CharField(max_length=40, blank=True)
+    rate = models.DecimalField(max_digits=9, decimal_places=2, null=True, blank=True, help_text="Usual price per visit")
+    notes = models.CharField(max_length=300, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["kind", "name"]
+
+    def __str__(self):
+        return self.name

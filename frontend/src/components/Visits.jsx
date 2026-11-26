@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, fmtDate, money } from '../api'
 import { Icon, useToast } from './ui'
@@ -14,6 +14,14 @@ export function BookVisitForm({ propertyId, properties, defaultKind = 'inspectio
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
   const set = k => e => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+  const [vendors, setVendors] = useState([])
+  useEffect(() => { api.vendors({ active: 1 }).then(setVendors).catch(() => {}) }, [])
+  const KIND_FOR = { inspection: 'handyman', repair: 'handyman', photo_shoot: 'photographer', setup_day: 'mover', delivery: 'mover' }
+  const suggested = [...vendors].sort((a, b) => (b.kind === KIND_FOR[f.kind]) - (a.kind === KIND_FOR[f.kind]))
+  const pickVendor = (id) => {
+    const v = vendors.find(x => String(x.id) === id)
+    if (v) setF({ ...f, assigned_to: v.company || v.name, contact_email: v.email, contact_phone: v.phone, cost: v.rate ?? f.cost })
+  }
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null)
     try {
@@ -30,6 +38,9 @@ export function BookVisitForm({ propertyId, properties, defaultKind = 'inspectio
       <div className="field"><label htmlFor="bv-k">What</label><select id="bv-k" value={f.kind} onChange={set('kind')}>{KINDS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>
       <div className="field"><label htmlFor="bv-d">Date</label><input id="bv-d" type="date" required value={f.date} onChange={set('date')} /></div>
       <div className="field"><label htmlFor="bv-t">Time</label><input id="bv-t" placeholder="10:00–14:00" value={f.time} onChange={set('time')} /></div>
+      {vendors.length > 0 && <div className="field" style={{ gridColumn: '1/-1' }}><label htmlFor="bv-v">Vendor</label>
+        <select id="bv-v" defaultValue="" onChange={e => pickVendor(e.target.value)}><option value="">Choose a saved vendor (or type below)…</option>
+          {suggested.map(v => <option key={v.id} value={v.id}>{v.company || v.name} · {v.kind_label}{v.rate ? ` · $${v.rate}` : ''}</option>)}</select></div>}
       <div className="field"><label htmlFor="bv-a">Who</label><input id="bv-a" placeholder="Person or company" value={f.assigned_to} onChange={set('assigned_to')} /></div>
       <div className="field"><label htmlFor="bv-e">Their email</label><input id="bv-e" type="email" value={f.contact_email} onChange={set('contact_email')} /></div>
       <div className="field"><label htmlFor="bv-ph">Phone</label><input id="bv-ph" value={f.contact_phone} onChange={set('contact_phone')} /></div>

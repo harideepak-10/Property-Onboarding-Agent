@@ -150,7 +150,22 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
         model = Property
         fields = ["street_number", "street_name", "unit", "city", "postal_code", "owner_name", "owner_type",
                   "owner_email", "owner_phone", "bedrooms", "bathrooms", "beds", "lease_start", "lease_end",
-                  "drive_folder_url"]
+                  "drive_folder_url", "nickname", "unit_email"]
+        extra_kwargs = {"nickname": {"required": False, "allow_blank": True, "validators": []},
+                        "unit_email": {"required": False}}
+
+    def validate_nickname(self, value):
+        from django.core.exceptions import ValidationError as DjangoError
+
+        from properties.services import clean_nickname
+        if not (value or "").strip():
+            if self.instance:
+                raise serializers.ValidationError("The nickname can't be empty.")
+            return ""
+        try:
+            return clean_nickname(value, exclude_pk=self.instance.pk if self.instance else None)
+        except DjangoError as e:
+            raise serializers.ValidationError(e.messages[0])
 
     def validate(self, attrs):
         if attrs.get("beds", 1) < 1:

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { api } from '../api'
 import AgentRun from '../components/AgentRun'
@@ -26,6 +26,7 @@ export default function PropertyDetail() {
   const [light, setLight] = useState(null)
   const [listingRun, setListingRun] = useState(null)
   const [running, setRunning] = useState(false)
+  const [editing, setEditing] = useState(false)
   const load = useCallback(() => Promise.all([api.property(id).then(setP), api.listing(id).then(setListing)]).catch(setErr), [id])
   useEffect(() => { setP(null); setListing(null); setTab('onboarding'); setListingRun(null); load() }, [load])
 
@@ -45,7 +46,8 @@ export default function PropertyDetail() {
       <div className="row"><Link className="btn ghost small" to="/properties"><Icon name="back" small />All properties</Link></div>
       <div className="prop-head">
         <div style={{ minWidth: 0 }}>
-          <div className="row" style={{ gap: 10 }}><span className="chip mono">{p.nickname}</span><Pill map={STATE} value={p.state} /></div>
+          <div className="row" style={{ gap: 10 }}><span className="chip mono">{p.nickname}</span><Pill map={STATE} value={p.state} />
+            <button className="btn ghost small" type="button" onClick={() => setEditing(true)}>Edit</button></div>
           <h1 className="prop-title">{p.address}</h1>
           <div className="res-loc" style={{ fontSize: 14 }}><Icon name="pin" small /><span>{p.city}{p.postal_code ? `, ${p.postal_code}` : ''}</span></div>
         </div>
@@ -55,6 +57,7 @@ export default function PropertyDetail() {
         </div>
       </div>
 
+      {editing && <EditBasics p={p} onClose={() => setEditing(false)} onSaved={(np) => { setP(np); setEditing(false); toast('Saved.') }} />}
       <Mosaic photos={photos} onOpen={setLight} />
       <Lightbox photos={photos} index={light} onClose={() => setLight(null)} />
 
@@ -286,5 +289,32 @@ function PacketCard({ p }) {
         <div className="muted sm" style={{ marginTop: 8 }}>Default list. Confirm the City's exact requirements with the client.</div>
       </div>
     </section>
+  )
+}
+
+function EditBasics({ p, onClose, onSaved }) {
+  const ref = useRef()
+  const [f, setF] = useState({ nickname: p.nickname, unit_email: p.unit_email || '' })
+  const [err, setErr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { ref.current?.showModal() }, [])
+  const save = async (e) => {
+    e.preventDefault(); setBusy(true); setErr(null)
+    try { onSaved(await api.updateProperty(p.id, f)) } catch (e2) { setErr(e2) } finally { setBusy(false) }
+  }
+  return (
+    <dialog ref={ref} onClose={onClose}><form onSubmit={save}>
+      <div className="dlg-h"><h2>Edit property</h2><span className="spacer" /><button className="btn ghost small" type="button" onClick={onClose}>Close</button></div>
+      <div className="dlg-b">
+        <ErrorBox error={err} />
+        <div className="field"><label htmlFor="eb-nick">Nickname</label>
+          <input id="eb-nick" value={f.nickname} maxLength={40} required onChange={e => setF({ ...f, nickname: e.target.value })} />
+          <span className="muted sm">Any name or number. Used in Drive, the tracker and Guesty; change it in Guesty too if the listing already exists.</span></div>
+        <div className="field"><label htmlFor="eb-email">Unit email</label>
+          <input id="eb-email" type="email" value={f.unit_email} onChange={e => setF({ ...f, unit_email: e.target.value })} placeholder="e.g. unit1204@gmail.com" />
+          <span className="muted sm">Saving an email ticks “Unique unit email created” (step 3).</span></div>
+      </div>
+      <div className="dlg-f"><span className="spacer" /><button className="btn primary" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button></div>
+    </form></dialog>
   )
 }

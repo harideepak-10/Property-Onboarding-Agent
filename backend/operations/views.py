@@ -19,10 +19,10 @@ from properties.models import Property, UserProfile
 from properties.permissions import ROLES, can
 
 from . import services
-from .models import Expense, Inspection, Notification, Visit
+from .models import Expense, Inspection, Notification, Vendor, Visit
 from .serializers import (
     AccessSerializer, BedroomSerializer, ExpenseSerializer, InspectionSerializer, NotificationSerializer,
-    UtilitySerializer, VisitSerializer,
+    UtilitySerializer, VendorSerializer, VisitSerializer,
 )
 
 
@@ -356,3 +356,30 @@ def user_detail(request, pk):
     u.save()
     u = User.objects.select_related("profile").get(pk=u.pk)
     return Response(_user_row(u))
+
+
+# ---------- contacts: vendors and CSV imports ----------
+
+class VendorViewSet(viewsets.ModelViewSet):
+    serializer_class = VendorSerializer
+
+    def get_queryset(self):
+        qs = Vendor.objects.all()
+        if self.request.query_params.get("kind"):
+            qs = qs.filter(kind=self.request.query_params["kind"])
+        if self.request.query_params.get("active"):
+            qs = qs.filter(is_active=True)
+        return qs
+
+
+@api_view(["POST"])
+def import_contacts(request, kind):
+    from . import contacts
+    f = request.FILES.get("file")
+    if not f:
+        return Response({"detail": "Attach a CSV file."}, status=400)
+    fn = {"buildings": contacts.import_buildings, "vendors": contacts.import_vendors}.get(kind)
+    if not fn:
+        return Response({"detail": "Unknown import."}, status=404)
+    result = fn(io.TextIOWrapper(f.file, encoding="utf-8-sig"))
+    return Response(result, status=400 if result["errors"] else 200)

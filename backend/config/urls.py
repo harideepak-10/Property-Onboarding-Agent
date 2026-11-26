@@ -22,6 +22,7 @@ router.register("compliance-items", ag.ComplianceItemViewSet, basename="complian
 router.register("visits", op.VisitViewSet, basename="visit")
 router.register("inspections", op.InspectionViewSet, basename="inspection")
 router.register("expenses", op.ExpenseViewSet, basename="expense")
+router.register("vendors", op.VendorViewSet, basename="vendor")
 
 api = [
     path("auth/login/", ob.login),
@@ -36,6 +37,7 @@ api = [
     path("order-lines/<int:pk>/track/", op.track_line),
     path("orders/<int:pk>/mark-store/", op.mark_store),
     path("purchasing/", op.purchasing),
+    path("contacts/import/<str:kind>/", op.import_contacts),
     path("reports/", op.reports),
     path("reports/<str:key>/", op.report),
     path("digest/", op.digest),

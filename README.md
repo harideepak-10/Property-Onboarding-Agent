@@ -162,17 +162,33 @@ backend/
   tests/         Engine, procurement and API tests
 frontend/src/
   pages/         Dashboard, Properties, PropertyDetail (+ property/ tabs), Procurement, Purchasing, Schedule, Reports,
-                 Users, MasterList, Approvals, Licences, Buildings, Login
+                 Users, Contacts (buildings + vendors), MasterList, Approvals, Licences, Login
   components/    Layout, NewPropertyDialog, ui (icons, pills, toast)
 ```
 
 ## Assumptions to confirm with the client
-- **Nickname format:** A + sequence, city code, first 3 letters of the street + unit number.
+- **Nickname:** any name or number (e.g. `King Loft`, `1204`); leave it blank and one is generated as A + sequence, city code, first 3 letters of the street + unit number. It can be changed later with **Edit** on the property page.
 - **Typical price:** a fixed reference price, updated whenever the master list is re-imported.
 - **Over-price threshold:** 25%. Change it with `OVER_PRICE_THRESHOLD`.
 
 - **Licence packet:** the default packet list is a placeholder. The City of Toronto's exact requirements need confirming (`AGENTS["LICENCE_PACKET"]` in settings).
-- **Unit email format:** `{street}{unit}@<domain>`, e.g. que1204@…
+- **Unit email:** by default a free Gmail alias of the ops inbox, e.g. `ops+que1204@gmail.com` (`UNIT_EMAIL_MODE=gmail_alias`). `manual` suggests an address for the team to create; `workspace` creates a paid Google Workspace user.
+
+## Google Workspace setup (our own Workspace for now)
+1. In Google Cloud Console, create a project and enable the **Drive**, **Sheets** and **Gmail** APIs.
+2. Create a **service account**, then create a JSON key for it.
+3. In the Workspace Admin console → Security → API controls → **Domain-wide delegation**, add the service account's client ID with these scopes:
+   `https://www.googleapis.com/auth/drive`, `https://www.googleapis.com/auth/spreadsheets`, `https://www.googleapis.com/auth/gmail.send`
+4. Make a Drive folder for the unit folders and a Google Sheet for the portfolio tracker. Share both with the service account's email.
+5. Set the environment variables (Render → API service → Environment):
+   - `GOOGLE_SERVICE_ACCOUNT_JSON` = the whole contents of the JSON key (locally you can use `GOOGLE_SERVICE_ACCOUNT_FILE` = path to the file instead)
+   - `GOOGLE_SENDER_EMAIL` = the mailbox that sends approved emails, e.g. ops@krypsos.tech
+   - `GOOGLE_DRIVE_PARENT_FOLDER_ID` = the ID at the end of the Drive folder's URL
+   - `GOOGLE_TRACKER_SHEET_ID` = the ID in the sheet's URL (and `GOOGLE_TRACKER_RANGE` if the tab isn't called Portfolio)
+   - `UNIT_EMAIL_BASE` = the Gmail inbox unit aliases should go to (defaults to `OPS_EMAIL`)
+6. Redeploy. The sidebar chips switch from "dry run" to "live" for each service that's configured.
+
+The Admin SDK (creating Workspace users) isn't needed while unit emails are Gmail aliases.
 
 ## Decisions on open questions
 Defaults we chose so the build wasn't blocked. The client can confirm or change any of them.
@@ -186,13 +202,13 @@ Defaults we chose so the build wasn't blocked. The client can confirm or change 
 | Supplies | Blackout curtains: standard kit or decor? | Standard kit, one pair per bedroom. Living-room curtains are decor (picked by hand). | Master list. |
 | Supplies | What does 'typical price' mean, and when is an item flagged? | Typical price is the master-list reference price, updated whenever the list is re-imported. Flag at more than 25% over it, or out of stock. | PROCUREMENT.OVER_PRICE_THRESHOLD (0.25). |
 | Purchasing | Who places the orders and how do we know they arrived? | The team checks out each store cart, then marks it ordered (with the store order number and expected date). Each line is marked delivered, missing or damaged on arrival. Missing/damaged lines roll into a top-up order. | — |
-| Purchasing | Who can approve an order? | Managers and admins. Coordinators prepare orders but can't approve them. | Users page → role. |
+| Purchasing | Who can approve an order? | Admins only (client decision). Managers and coordinators prepare orders but can't approve them. | Users page → role; `properties/permissions.py`. |
 | Admin setup | Which utilities must be set up before step 2 is done? | Electricity and internet. Water and gas are tracked but optional (often included by the building). | REQUIRED_UTILITIES env var (comma-separated). |
 | Admin setup | When are 'Keys and fobs registered' and 'Parking registered' done? | Automatically when the Unit tab shows at least one key or fob and the building has confirmed registration; parking when registered (or the unit has no parking). | — |
 | Inspection | What does the inspection cover? | A standard checklist per room (entry, kitchen, living, each bedroom, each bathroom, laundry, safety) with condition, action and estimated cost, plus room measurements. Rooms in feet, windows in inches. | Items can be added per inspection; the default list is in operations/services.py. |
 | Photography | When do we chase the photographer? | 3 days after the shoot with no Drive link, a follow-up email is drafted for approval. | PHOTO_FOLLOWUP_DAYS env var. |
-| Listing | Nickname format | Kept as A<sequence>-<CITY>-<STREET3><UNIT>, e.g. A37313-TOR-BAY617, numbering from 37331. | ONBOARDING.NICKNAME_START; properties/services.py for the format. |
-| Licence | Unit email format and licence documents | Unit email is {street}{unit}@domain. The licence packet list stays a placeholder until the client sends the City of Toronto requirements. | UNIT_EMAIL_DOMAIN / UNIT_EMAIL_PATTERN; AGENTS.LICENCE_PACKET. |
+| Listing | Nickname format | Client decision: any name or number. Blank = generated A<sequence>-<CITY>-<STREET3><UNIT>, e.g. A37313-TOR-BAY617. | Edit on the property page. |
+| Licence | Unit email and licence documents | Client decision: normal Gmail. Default is a Gmail alias of the ops inbox (ops+que1204@gmail.com), no new account needed. The licence packet list stays a placeholder until the client sends the City of Toronto requirements. | UNIT_EMAIL_MODE / UNIT_EMAIL_BASE; AGENTS.LICENCE_PACKET. |
 | Team | Who can do what? | Four roles: admin (everything + users), manager (approvals, sending emails, go-live, master list), coordinator (day-to-day work), viewer (read-only). | Users page. |
 | Notifications | How does the team hear about problems? | A daily digest email to the ops inbox (blocked steps, late deliveries, visits this week, expiring licences, drafts waiting). Optional Slack via a webhook. | DIGEST_TO, SLACK_WEBHOOK_URL env vars; run_agent_sweeps --digest. |
 | Costs | What counts in the cost per property? | Approved purchases (actual price when entered, otherwise the cart price), decor, and expenses (licence fee, inspection, photography, labour, repairs, building fees). Monthly utilities are shown separately. | — |

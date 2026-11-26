@@ -320,3 +320,61 @@ class ReportExportTests(TestCase):
         self.assertEqual(self.c.get("/api/reports/property/").status_code, 400)
         self.assertEqual(self.c.get("/api/reports/spending/", {"period": "custom", "from": "2026-02-01", "to": "2026-01-01"}).status_code, 400)
         self.assertEqual(self.c.get("/api/reports/nope/").status_code, 400)
+
+
+class NicknameTests(TestCase):
+    def setUp(self):
+        self.c = APIClient()
+        self.c.force_authenticate(get_user_model().objects.create_superuser("n", "n@example.com", "pw-12345678"))
+
+    def payload(self, **kw):
+        return {"street_number": "1", "street_name": "King St W", "unit": "101", "owner_name": "O", "bedrooms": 1,
+                "bathrooms": 1, "beds": 1, **kw}
+
+    def test_custom_auto_and_unique(self):
+        r = self.c.post("/api/properties/", self.payload(nickname="  King   Loft 1 "), format="json")
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual(r.data["nickname"], "King Loft 1")
+        r = self.c.post("/api/properties/", self.payload(unit="102"), format="json")
+        self.assertRegex(r.data["nickname"], r"^A\d+-TOR-KIN102$")
+        r = self.c.post("/api/properties/", self.payload(unit="103", nickname="king loft 1"), format="json")
+        self.assertEqual(r.status_code, 400)
+        r = self.c.post("/api/properties/", self.payload(unit="104", nickname="bad<name>"), format="json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_rename_and_unit_email(self):
+        pid = self.c.post("/api/properties/", self.payload(), format="json").data["id"]
+        r = self.c.patch(f"/api/properties/{pid}/", {"nickname": "12345", "unit_email": "unit101@gmail.com"}, format="json")
+        self.assertEqual(r.status_code, 200, r.data)
+        self.assertEqual((r.data["nickname"], r.data["unit_email"]), ("12345", "unit101@gmail.com"))
+        self.assertEqual(self.c.patch(f"/api/properties/{pid}/", {"nickname": ""}, format="json").status_code, 400)
+
+    def test_only_admin_approves_orders(self):
+        from properties.permissions import can
+        mgr = get_user_model().objects.create_user("m", password="pw-12345678")
+        UserProfile.objects.create(user=mgr, role="manager")
+        self.assertFalse(can(mgr, "approve_orders"))
+        self.assertTrue(can(mgr, "send_emails"))
+
+
+class ContactImportTests(TestCase):
+    def setUp(self):
+        self.c = APIClient()
+        self.c.force_authenticate(get_user_model().objects.create_superuser("ci", "c@example.com", "pw-12345678"))
+
+    def upload(self, kind, text):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return self.c.post(f"/api/contacts/import/{kind}/", {"file": SimpleUploadedFile("x.csv", text.encode())}, format="multipart")
+
+    def test_vendors_and_buildings(self):
+        r = self.upload("vendors", "Name,Kind,Email,Phone,Rate\nRay,Handyman,ray@x.com,1,$150\nLens Co,photos,l@x.com,2,275\n")
+        self.assertEqual(r.data["created"], 2, r.data)
+        r = self.upload("vendors", "name,kind,email,rate\nRay T,handyman,RAY@x.com,160\n")
+        self.assertEqual((r.data["created"], r.data["updated"]), (0, 1))
+        self.assertEqual(self.c.get("/api/vendors/", {"kind": "photographer"}).data[0]["name"], "Lens Co")
+        self.assertEqual(self.upload("vendors", "name,rate\nX,abc\n").status_code, 400)
+        p = prop_at()
+        r = self.upload("buildings", "street_number,street_name,name,management_email\n270,Queens Quay W,Harbour,front@x.com\n")
+        self.assertEqual(r.data["created"], 1, r.data)
+        p.refresh_from_db()
+        self.assertEqual(p.building.management_email, "front@x.com")

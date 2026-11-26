@@ -29,7 +29,7 @@ def tick(prop, step, titles, user=None, note=""):
     except ValidationError:
         return False
 PROPERTY_FIELDS = ["owner_name", "owner_type", "owner_email", "owner_phone", "street_number", "street_name", "unit",
-                   "city", "postal_code", "bedrooms", "bathrooms", "beds", "lease_start", "lease_end"]
+                   "city", "postal_code", "bedrooms", "bathrooms", "beds", "lease_start", "lease_end", "nickname"]
 
 
 def read_agreement(doc: AgreementDocument) -> AgreementDocument:

@@ -13,7 +13,7 @@ import Procurement from './pages/Procurement'
 import MasterList from './pages/MasterList'
 import Approvals from './pages/Approvals'
 import Licences from './pages/Licences'
-import Buildings from './pages/Buildings'
+import Contacts from './pages/Contacts'
 import Purchasing from './pages/Purchasing'
 import Schedule from './pages/Schedule'
 import Reports from './pages/Reports'
@@ -46,7 +46,8 @@ function App() {
         <Route path="master-list" element={<MasterList />} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="licences" element={<Licences />} />
-        <Route path="buildings" element={<Buildings />} />
+        <Route path="contacts" element={<Contacts />} />
+        <Route path="buildings" element={<Navigate to="/contacts" replace />} />
         <Route path="purchasing" element={<Purchasing />} />
         <Route path="schedule" element={<Schedule />} />
         <Route path="reports" element={<Reports />} />

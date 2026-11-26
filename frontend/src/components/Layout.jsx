@@ -5,7 +5,7 @@ import { Icon, ROLE_LABEL } from './ui'
 import NewPropertyDialog from './NewPropertyDialog'
 import CommandPalette from './CommandPalette'
 
-const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', buildings: 'Buildings' }
+const TITLES = { '': 'Dashboard', properties: 'Properties', procurement: 'Procurement', purchasing: 'Purchasing', schedule: 'Schedule', reports: 'Reports', users: 'Users', 'master-list': 'Master list', approvals: 'Approvals', licences: 'Licences', contacts: 'Contacts' }
 const INT_LABEL = { live: 'live', dry_run: 'dry run', heuristic: 'basic reader' }
 
 export default function Layout({ user, onLogout }) {
@@ -53,7 +53,7 @@ export default function Layout({ user, onLogout }) {
           <NavLink to="/schedule"><Icon name="cal" />Schedule</NavLink>
           <NavLink to="/approvals"><Icon name="mail" />Approvals{counts.drafts > 0 && <span className="badge red">{counts.drafts}</span>}</NavLink>
           <NavLink to="/licences"><Icon name="shield" />Licences</NavLink>
-          <NavLink to="/buildings"><Icon name="building" />Buildings</NavLink>
+          <NavLink to="/contacts"><Icon name="building" />Contacts</NavLink>
           <NavLink to="/master-list"><Icon name="list" />Master list</NavLink>
         </nav>
         <div className="nav-label">Insights</div>

@@ -24,6 +24,20 @@ def build_nickname(sequence: int, city_code: str, street_name: str, unit: str) -
     return f"A{sequence}-{city_code.upper()}-{street_code(street_name)}{unit_digits}"
 
 
+NICKNAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _.#/-]{0,39}$")
+
+
+def clean_nickname(value, exclude_pk=None) -> str:
+    """Any name or number the team likes (letters, numbers, spaces, - _ . # /), unique, up to 40 characters."""
+    from django.core.exceptions import ValidationError
+    nick = re.sub(r"\s+", " ", (value or "").strip())
+    if not NICKNAME_RE.match(nick):
+        raise ValidationError("Use up to 40 letters, numbers, spaces or - _ . # / for the nickname.")
+    if Property.objects.filter(nickname__iexact=nick).exclude(pk=exclude_pk).exists():
+        raise ValidationError(f"Another property is already called {nick}.")
+    return nick
+
+
 def next_sequence() -> int:
     start = settings.ONBOARDING["NICKNAME_START"]
     current = Property.objects.aggregate(m=Max("sequence"))["m"]
@@ -41,7 +55,8 @@ def create_property(data: dict, user=None) -> Property:
 
     city_code = data.pop("city_code", None) or settings.ONBOARDING["DEFAULT_CITY_CODE"]
     sequence = data.pop("sequence", None) or next_sequence()
-    nickname = build_nickname(sequence, city_code, data["street_name"], data["unit"])
+    custom = data.pop("nickname", "") or ""
+    nickname = clean_nickname(custom) if custom.strip() else build_nickname(sequence, city_code, data["street_name"], data["unit"])
     prop = Property.objects.create(sequence=sequence, city_code=city_code, nickname=nickname, **data)
     Licence.objects.create(property=prop)
     create_checklist(prop)

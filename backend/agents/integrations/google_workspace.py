@@ -46,7 +46,7 @@ class GoogleWorkspace:
     # ----- mode -----
     @property
     def has_credentials(self):
-        return bool(self.cfg.get("GOOGLE_SERVICE_ACCOUNT_FILE"))
+        return bool(self.cfg.get("GOOGLE_SERVICE_ACCOUNT_FILE") or self.cfg.get("GOOGLE_SERVICE_ACCOUNT_JSON"))
 
     def live(self, feature):
         needs = {
@@ -64,8 +64,13 @@ class GoogleWorkspace:
         from google.oauth2 import service_account
         from googleapiclient.discovery import build
 
-        creds = service_account.Credentials.from_service_account_file(
-            self.cfg["GOOGLE_SERVICE_ACCOUNT_FILE"], scopes=SCOPES[feature])
+        if self.cfg.get("GOOGLE_SERVICE_ACCOUNT_JSON"):
+            import json
+            creds = service_account.Credentials.from_service_account_info(
+                json.loads(self.cfg["GOOGLE_SERVICE_ACCOUNT_JSON"]), scopes=SCOPES[feature])
+        else:
+            creds = service_account.Credentials.from_service_account_file(
+                self.cfg["GOOGLE_SERVICE_ACCOUNT_FILE"], scopes=SCOPES[feature])
         if subject:
             creds = creds.with_subject(subject)
         return build(api, version, credentials=creds, cache_discovery=False)

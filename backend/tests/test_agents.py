@@ -117,8 +117,27 @@ class ComplianceTests(TestCase):
         from onboarding.engine import refresh_statuses
         refresh_statuses(self.p)
 
+    def test_unit_email_gmail_alias_default(self):
+        from django.conf import settings
+        with override_settings(AGENTS={**settings.AGENTS, "UNIT_EMAIL_MODE": "gmail_alias", "UNIT_EMAIL_BASE": "krypsos.ops@gmail.com"}):
+            compliance.run_compliance(self.p)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.unit_email, "krypsos.ops+que1204@gmail.com")
+        self.assertTrue(task_done(self.p, 3, "Unique unit email created"))
+
+    def test_unit_email_manual(self):
+        from django.conf import settings
+        with override_settings(AGENTS={**settings.AGENTS, "UNIT_EMAIL_MODE": "manual"}):
+            run = compliance.run_compliance(self.p)
+        self.p.refresh_from_db()
+        self.assertEqual(self.p.unit_email, "")
+        self.assertIn("que1204@gmail.com", run.trace[0]["detail"])
+        self.assertFalse(task_done(self.p, 3, "Unique unit email created"))
+
     def test_unit_email_and_packet(self):
-        run = compliance.run_compliance(self.p)
+        from django.conf import settings
+        with override_settings(AGENTS={**settings.AGENTS, "UNIT_EMAIL_MODE": "workspace"}):
+            run = compliance.run_compliance(self.p)
         self.p.refresh_from_db()
         self.assertEqual(self.p.unit_email, "que1204@stays.example.com")
         self.assertTrue(task_done(self.p, 3, "Unique unit email created"))

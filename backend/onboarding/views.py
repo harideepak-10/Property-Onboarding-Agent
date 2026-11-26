@@ -86,8 +86,19 @@ class PropertyViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, mixins.C
         return Response(PropertyDetailSerializer(prop).data, status=201)
 
     def update(self, request, *args, **kwargs):
+        before = self.get_object()
+        old = {"nickname": before.nickname, "unit_email": before.unit_email}
         super().update(request, *args, **kwargs)
-        return Response(PropertyDetailSerializer(self.get_object()).data)
+        prop = self.get_object()
+        if prop.nickname != old["nickname"]:
+            log(prop, f"Nickname changed from {old['nickname']} to {prop.nickname}", actor=actor_name(request.user), user=request.user)
+        if prop.unit_email != old["unit_email"]:
+            log(prop, f"Unit email set to {prop.unit_email or '(none)'}", actor=actor_name(request.user), user=request.user)
+            if prop.unit_email:
+                from agents.compliance import ensure_packet, tick
+                ensure_packet(prop)
+                tick(prop, 3, ["Unique unit email created"], request.user, prop.unit_email)
+        return Response(PropertyDetailSerializer(prop).data)
 
     @action(detail=True, methods=["get", "patch"])
     def licence(self, request, pk=None):

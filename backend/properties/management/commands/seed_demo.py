@@ -195,6 +195,13 @@ class Command(BaseCommand):
         from properties.models import Bedroom, UtilityAccount
 
         today = timezone.localdate()
+        from operations.models import Vendor
+        for name, kind, company, email, phone, rate in [
+            ("Ray Thompson", "handyman", "Ray's Handyman Services", "ray@example.com", "416-555-0141", "150"),
+            ("Northlight Photo", "photographer", "Northlight Photo", "bookings@example.com", "416-555-0177", "275"),
+            ("Sparkle Cleaning", "cleaner", "Sparkle Cleaning Co.", "hello.sparkle@example.com", "647-555-0102", "220"),
+        ]:
+            Vendor.objects.get_or_create(email=email, defaults=dict(name=name, kind=kind, company=company, phone=phone, rate=Decimal(rate)))
         for prop in Property.objects.filter(sequence__in=self.LAYOUTS):
             if prop.bedrooms_detail.exists():
                 continue

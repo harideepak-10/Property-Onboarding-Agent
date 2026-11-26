@@ -17,12 +17,23 @@ from .models import AgentRun, ComplianceItem, EmailDraft, LicenceReminder
 AGENT = "Compliance agent"
 
 
+def _unit_local(prop) -> str:
+    local = settings.AGENTS["UNIT_EMAIL_PATTERN"].format(
+        street=street_code(prop.street_name).lower(), unit=re.sub(r"\D", "", prop.unit),
+        nickname=re.sub(r"[^a-z0-9]", "", prop.nickname.lower()))
+    return re.sub(r"[^a-z0-9._-]", "", local.lower()) or f"unit{prop.pk}"
+
+
 def unit_email_for(prop) -> str:
     cfg = settings.AGENTS
-    local = cfg["UNIT_EMAIL_PATTERN"].format(
-        street=street_code(prop.street_name).lower(), unit=re.sub(r"\D", "", prop.unit),
-        nickname=prop.nickname.lower())
-    return f"{local}@{cfg['UNIT_EMAIL_DOMAIN']}"
+    mode = cfg.get("UNIT_EMAIL_MODE", "workspace")
+    if mode == "gmail_alias":
+        base = cfg.get("UNIT_EMAIL_BASE") or cfg["OPS_EMAIL"]
+        user, _, domain = base.partition("@")
+        return f"{user.split('+')[0]}+{_unit_local(prop)}@{domain}"
+    if mode == "manual":
+        return f"{_unit_local(prop)}@gmail.com"
+    return f"{_unit_local(prop)}@{cfg['UNIT_EMAIL_DOMAIN']}"
 
 
 def ensure_packet(prop):
@@ -55,14 +66,24 @@ def run_compliance(prop, user=None, google=None, run=None) -> AgentRun:
     warnings = 0
     try:
         # 1. Unique unit email
-        if not prop.unit_email:
+        mode = settings.AGENTS.get("UNIT_EMAIL_MODE", "workspace")
+        if not prop.unit_email and mode == "manual":
             email = unit_email_for(prop)
-            res = google.create_user(email, given_name=f"Unit {prop.unit}", family_name=prop.nickname)
+            run.add("Unit email needs to be created by hand", "warn",
+                    f"Create a Gmail account (suggested: {email}), then save it under Edit on the property page.")
+            warnings += 1
+        elif not prop.unit_email:
+            email = unit_email_for(prop)
+            if mode == "gmail_alias":
+                dry, label = False, "Set the unit's email address (Gmail alias, no new account needed)"
+            else:
+                dry, label = google.create_user(email, given_name=f"Unit {prop.unit}", family_name=prop.nickname).dry_run, \
+                    "Created the unit's email address"
             prop.unit_email = email
             prop.save(update_fields=["unit_email"])
             ok = tick(prop, 3, ["Unique unit email created"], user, email)
-            run.add("Created the unit's email address", "ok" if ok else "warn",
-                    email + ("" if ok else " · step 3 is locked until the agreement step is done"), dry_run=res.dry_run)
+            run.add(label, "ok" if ok else "warn",
+                    email + ("" if ok else " · step 3 is locked until the agreement step is done"), dry_run=dry)
             warnings += not ok
         else:
             run.add("Unit email already exists", "skip", prop.unit_email)

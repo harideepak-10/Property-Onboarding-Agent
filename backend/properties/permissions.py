@@ -1,7 +1,7 @@
 """Role-based access. Every signed-in user can read; writes depend on the role.
 
 admin        everything, including users and the master list
-manager      everything except user management
+manager      everything except user management and approving orders
 coordinator  day-to-day work; can't approve orders, send emails, approve go-live or unlist, or edit the master list
 viewer       read-only
 
@@ -12,7 +12,7 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 ROLES = ["admin", "manager", "coordinator", "viewer"]
 
 PERMISSIONS = {
-    "approve_orders": {"admin", "manager"},
+    "approve_orders": {"admin"},                 # client decision: only admins approve spending
     "send_emails": {"admin", "manager"},
     "approve_go_live": {"admin", "manager"},
     "edit_master_list": {"admin", "manager"},

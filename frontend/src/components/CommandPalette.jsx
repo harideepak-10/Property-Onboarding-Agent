@@ -6,7 +6,7 @@ import { Icon } from './ui'
 const PAGES = [
   ['Dashboard', '/', 'grid'], ['Properties', '/properties', 'home'], ['Procurement', '/procurement', 'cart'],
   ['Purchasing', '/purchasing', 'truck'], ['Schedule', '/schedule', 'cal'], ['Approvals', '/approvals', 'mail'],
-  ['Licences', '/licences', 'shield'], ['Buildings', '/buildings', 'building'], ['Master list', '/master-list', 'list'],
+  ['Licences', '/licences', 'shield'], ['Contacts', '/contacts', 'building'], ['Vendors', '/contacts?tab=vendors', 'users'], ['Master list', '/master-list', 'list'],
   ['Reports', '/reports', 'chart'],
 ]
 

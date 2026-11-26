@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { ErrorBox, Icon, Loading, useToast } from '../components/ui'
+import { ImportButton } from './Contacts'
 
 const BLANK = { name: '', street_number: '', street_name: '', management_company: '', management_email: '', management_phone: '', registration_notes: '' }
 
-export default function Buildings() {
+export default function Buildings({ embedded }) {
   const [list, setList] = useState(null)
   const [edit, setEdit] = useState(null)
   const [err, setErr] = useState(null)
@@ -20,7 +21,8 @@ export default function Buildings() {
   if (!list) return err ? <ErrorBox error={err} /> : <Loading />
   return (
     <>
-      <div className="page-head"><div><h1>Buildings</h1><p>Management offices the Intake agent emails to register units, keys, fobs and parking.</p></div><span className="spacer" />
+      <div className="row"><p className="muted" style={{ margin: 0 }}>Management offices the Intake agent emails to register units, keys, fobs and parking.</p><span className="spacer" />
+        <ImportButton kind="buildings" columns="street_number, street_name, name, management_company, management_email, management_phone, notes" onDone={load} />
         <button className="btn primary" type="button" onClick={() => setEdit({ ...BLANK })}><Icon name="plus" small />Add building</button></div>
       <ErrorBox error={err} />
       <section className="card"><div className="table-wrap"><table>

@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from properties.models import Bedroom, UnitAccess, UtilityAccount
 
-from .models import Expense, Inspection, InspectionItem, Notification, RoomMeasurement, Visit
+from .models import Expense, Inspection, InspectionItem, Notification, RoomMeasurement, Vendor, Visit
 
 
 class BedroomSerializer(serializers.ModelSerializer):
@@ -101,3 +101,15 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = ["id", "kind", "channel", "subject", "body", "dry_run", "sent_at"]
+
+
+class VendorSerializer(serializers.ModelSerializer):
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    visits = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Vendor
+        fields = ["id", "name", "kind", "kind_label", "company", "email", "phone", "rate", "notes", "is_active", "visits"]
+
+    def get_visits(self, obj):
+        return Visit.objects.filter(contact_email__iexact=obj.email).count() if obj.email else 0
