@@ -15,6 +15,9 @@ export default function Layout({ user, onLogout }) {
   const [integ, setInteg] = useState(null)
   const [newOpen, setNewOpen] = useState(false)
   const [cmdk, setCmdk] = useState(false)
+  const [menu, setMenu] = useState(false)
+  useEffect(() => { setMenu(false) }, [loc.pathname])
+  useEffect(() => { document.body.style.overflow = menu ? 'hidden' : ''; return () => { document.body.style.overflow = '' } }, [menu])
   const section = loc.pathname.split('/')[1] || ''
 
   useEffect(() => {
@@ -37,8 +40,10 @@ export default function Layout({ user, onLogout }) {
 
   return (
     <div className="app">
-      <aside className="side">
-        <div className="logo"><div className="logo-mark">PO</div><div><b>Onboarding</b><span>Short-term rentals</span></div></div>
+      {menu && <div className="side-back" onClick={() => setMenu(false)} aria-hidden="true" />}
+      <aside className={`side ${menu ? 'open' : ''}`} aria-label="Menu">
+        <div className="logo"><div className="logo-mark">PO</div><div><b>Onboarding</b><span>Short-term rentals</span></div>
+          <button className="icon-btn side-close" type="button" onClick={() => setMenu(false)} aria-label="Close menu">×</button></div>
         <div className="nav-label">Workspace</div>
         <nav className="nav" aria-label="Main">
           <NavLink to="/" end><Icon name="grid" />Dashboard</NavLink>
@@ -73,19 +78,29 @@ export default function Layout({ user, onLogout }) {
       </aside>
       <div className="main">
         <header className="topbar">
+          <button className="icon-btn menu-btn" type="button" onClick={() => setMenu(true)} aria-label="Open menu" aria-expanded={menu}>
+            <svg className="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" /></svg></button>
           <div className="crumbs"><span>Workspace</span><span>/</span><b>{TITLES[section] || 'Properties'}</b></div>
+          <b className="m-title">{TITLES[section] || 'Property'}</b>
           <span className="spacer" />
           <button type="button" className="search" onClick={() => setCmdk(true)} aria-label="Search">
-            <Icon name="search" small /><span style={{ flex: 1, textAlign: 'left' }}>Search properties, pages…</span>
+            <Icon name="search" small /><span className="lbl" style={{ flex: 1, textAlign: 'left' }}>Search properties, pages…</span>
             <span className="kbd">{mac ? '⌘' : 'Ctrl'} K</span>
           </button>
           <button className="icon-btn" type="button" aria-label="Alerts" onClick={() => nav('/')}>
             <Icon name="alert" />{counts.alerts > 0 && <span className="dot">{counts.alerts}</span>}
           </button>
-          <button className="btn primary" type="button" onClick={() => setNewOpen(true)}><Icon name="plus" small />New property</button>
+          <button className="btn primary new-btn" type="button" onClick={() => setNewOpen(true)} aria-label="New property"><Icon name="plus" small /><span className="lbl">New property</span></button>
         </header>
         <main className="content"><div className="page" key={loc.pathname}><Outlet /></div></main>
       </div>
+      <nav className="tabbar" aria-label="Quick">
+        <NavLink to="/" end><Icon name="grid" /><span>Home</span></NavLink>
+        <NavLink to="/properties"><Icon name="home" /><span>Properties</span></NavLink>
+        <button type="button" onClick={() => setCmdk(true)}><Icon name="search" /><span>Search</span></button>
+        <NavLink to="/approvals"><Icon name="mail" /><span>Approvals</span>{counts.drafts > 0 && <i className="tb-dot">{counts.drafts}</i>}</NavLink>
+        <button type="button" onClick={() => setMenu(true)}><svg className="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" /></svg><span>More</span></button>
+      </nav>
       <CommandPalette open={cmdk} onClose={() => setCmdk(false)} onNewProperty={() => setNewOpen(true)} />
       {newOpen && <NewPropertyDialog onClose={() => setNewOpen(false)} onCreated={(p, run) => { setNewOpen(false); nav(`/properties/${p.id}`, { state: { run } }) }} />}
     </div>

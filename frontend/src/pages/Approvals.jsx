@@ -36,7 +36,7 @@ export default function Approvals() {
             <button key={k} type="button" aria-pressed={tab === k} onClick={() => setParams({ tab: k })}>{l}</button>)}</div></div>
       <ErrorBox error={err} />
       {!list ? <Loading /> : !list.length ? <div className="card empty">{tab === 'draft' ? 'All caught up. No emails waiting for review.' : 'Nothing here yet.'}</div> : (
-        <div className="cols" style={{ gridTemplateColumns: 'minmax(260px,360px) minmax(0,1fr)' }}>
+        <div className="cols mail-cols">
           <section className="card" style={{ alignSelf: 'start' }}>
             <ul className="mail-list">{list.map(m => (
               <li key={m.id} aria-current={sel?.id === m.id} onClick={() => setSel(m)} tabIndex={0} onKeyDown={e => e.key === 'Enter' && setSel(m)}>
